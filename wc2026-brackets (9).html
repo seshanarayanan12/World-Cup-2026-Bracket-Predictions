@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFA World Cup 2026 · Bracket Predictor</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --card: #1a2235;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(255,255,255,0.16);
+    --gold: #f5a623;
+    --gold-dim: rgba(245,166,35,0.12);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --dim: #475569;
+    --accent: #f5a623;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  
+  /* NAV */
+  .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 0; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .nav-logo { font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: -0.3px; margin-right: auto; display: flex; align-items: center; gap: 8px; }
+  .nav-logo span { color: var(--text); font-weight: 400; }
+  .nav-tabs { display: flex; height: 100%; gap: 0; }
+  .nav-tab { height: 100%; padding: 0 16px; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .nav-user { margin-left: 16px; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--gold-dim); border: 1px solid var(--gold); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--gold); cursor: pointer; }
+  .btn-sm { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-bright); background: transparent; color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-sm:hover { background: var(--card); }
+  .btn-primary { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 600; }
+  .btn-primary:hover { background: #e59920; }
+
+  /* PAGES */
+  .page { display: none; padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* LOBBY / HOME */
+  .hero { text-align: center; padding: 60px 20px 40px; }
+  .hero h1 { font-size: 42px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
+  .hero h1 em { color: var(--gold); font-style: normal; }
+  .hero p { color: var(--muted); font-size: 16px; margin-top: 12px; }
+  .room-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 600px; margin: 32px auto 0; }
+  .room-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .room-card:hover { border-color: var(--gold); background: var(--gold-dim); }
+  .room-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .room-card p { font-size: 13px; color: var(--muted); }
+  .room-card .icon { font-size: 32px; margin-bottom: 12px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input, .form-group select { width: 100%; background: var(--bg); border: 1px solid var(--border-bright); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; transition: border 0.15s; }
+  .form-group input:focus, .form-group select:focus { border-color: var(--gold); }
+  .form-group select option { background: var(--surface); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 16px; padding: 28px; width: 100%; max-width: 420px; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border-bright); }
+  .modal-cancel { background: transparent; color: var(--muted); }
+  .modal-cancel:hover { color: var(--text); }
+  .modal-confirm { background: var(--gold); color: #000; border-color: var(--gold); }
+  .modal-confirm:hover { background: #e59920; }
+  .room-info { background: var(--bg); border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 13px; }
+  .mode-opt { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border-bright); border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .mode-opt:hover { border-color: var(--gold); }
+  .mode-opt input { margin-top: 3px; accent-color: var(--gold); }
+  .mode-opt:has(input:checked) { border-color: var(--gold); background: var(--gold-dim); }
+  .mode-title { font-size: 14px; font-weight: 600; }
+  .mode-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .room-info .code { font-size: 22px; font-weight: 800; color: var(--gold); letter-spacing: 4px; text-align: center; margin-top: 6px; }
+
+  /* SECTIONS HEADER */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .section-title { font-size: 20px; font-weight: 700; }
+  .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-gold { background: var(--gold-dim); color: var(--gold); }
+  .badge-green { background: rgba(34,197,94,0.12); color: var(--green); }
+  .badge-blue { background: rgba(59,130,246,0.12); color: var(--blue); }
+
+  /* GROUPS GRID */
+  .groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .group-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .group-header { background: var(--surface); padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  .group-letter { font-size: 13px; font-weight: 700; color: var(--gold); }
+  .group-header span { font-size: 12px; color: var(--muted); }
+  .team-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .team-row:last-child { border-bottom: none; }
+  .team-row:hover { background: rgba(255,255,255,0.03); }
+  .team-flag { font-size: 20px; width: 28px; text-align: center; }
+  .team-name { font-size: 13px; flex: 1; }
+  .team-rank { font-size: 11px; color: var(--dim); }
+  .team-qualify { display: flex; gap: 4px; }
+  .qualify-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border-bright); background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: all 0.15s; }
+  .qualify-btn.selected-1st { background: var(--gold); border-color: var(--gold); color: #000; }
+  .qualify-btn.selected-2nd { background: rgba(245,166,35,0.3); border-color: var(--gold); color: var(--gold); }
+  .qualify-btn.selected-3rd { background: rgba(59,130,246,0.35); border-color: var(--blue); color: #fff; }
+  .group-dates { font-size: 10px; color: var(--dim); padding: 6px 14px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+  /* FIXTURES LIST */
+  .fx-day-header { font-size: 12px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .fx-day-header:first-child { margin-top: 0; }
+  .fx-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  .fx-row.done { opacity: 0.6; }
+  .fx-time { min-width: 96px; font-size: 12px; }
+  .fx-time .t { font-weight: 700; color: var(--text); }
+  .fx-time .d { color: var(--muted); font-size: 11px; }
+  .fx-teams { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .fx-team { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .fx-team .flag { font-size: 18px; }
+  .fx-meta { text-align: right; font-size: 11px; color: var(--muted); min-width: 90px; }
+  .fx-grp-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--gold); background: var(--gold-dim); padding: 1px 6px; border-radius: 4px; }
+  .fx-predict { display: flex; align-items: center; gap: 6px; }
+  .fx-score-in { width: 40px; height: 38px; text-align: center; font-size: 16px; font-weight: 700; background: var(--bg); border: 1px solid var(--border-bright); border-radius: 6px; color: var(--text); outline: none; }
+  .fx-score-in:focus { border-color: var(--gold); }
+  .fx-score-in:disabled { opacity: 0.7; }
+  .fx-dash { color: var(--muted); font-weight: 700; }
+  .fx-result { font-size: 11px; color: var(--gold); margin-top: 2px; }
+  .fx-lock-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .fx-row.locked { opacity: 0.55; }
+  .fx-row.locked .fx-score-in { background: rgba(255,255,255,0.03); cursor: not-allowed; }
+  .fx-md-lock { float: right; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
+  .fx-md-open { float: right; font-size: 10px; font-weight: 600; color: #4ade80; text-transform: none; letter-spacing: 0; }
+  .fx-score { font-weight: 700; color: var(--gold); font-size: 14px; min-width: 16px; text-align: center; }
+  @media (max-width: 600px) {
+    .fx-meta { display: none; }
+    .fx-time { min-width: 80px; }
+  }
+
+  /* KNOCKOUT BRACKET */
+  .bracket-wrap { overflow-x: auto; padding-bottom: 16px; }
+  .bracket { display: flex; gap: 0; min-width: 900px; }
+  .bracket-round { display: flex; flex-direction: column; flex: 1; }
+  .bracket-round-header { text-align: center; padding: 8px 4px 12px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); margin: 0 4px 16px; }
+  .bracket-matches { display: flex; flex-direction: column; justify-content: space-around; flex: 1; gap: 0; }
+  .bracket-match-wrap { display: flex; align-items: center; flex: 1; padding: 4px 4px; }
+  .bracket-match { background: var(--card); border: 1px solid var(--border); border-radius: 8px; width: 100%; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+  .bracket-match:hover { border-color: var(--gold); }
+  .bracket-match.predicted { border-color: rgba(245,166,35,0.4); }
+  .match-team { display: flex; align-items: center; gap: 6px; padding: 7px 10px; font-size: 12px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .match-team:last-child { border-bottom: none; }
+  .match-team.winner { background: var(--gold-dim); color: var(--gold); font-weight: 600; }
+  .match-team.tbd { color: var(--dim); font-style: italic; }
+  .match-meta { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 10px 2px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+  .bracket-match.locked { opacity: 0.5; cursor: not-allowed; }
+  .bracket-match.locked:hover { border-color: var(--border); }
+  .locked-tab { opacity: 0.55; }
+  .match-flag { font-size: 14px; }
+  .match-score { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 16px; text-align: center; }
+  .connector { width: 10px; border-top: 1px solid var(--border); }
+
+  /* MATCH PREDICTION MODAL */
+  .predict-teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin: 20px 0; }
+  .predict-team { text-align: center; }
+  .predict-flag { font-size: 36px; margin-bottom: 6px; }
+  .predict-name { font-size: 14px; font-weight: 600; }
+  .predict-score { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .score-input { width: 48px; height: 48px; text-align: center; font-size: 22px; font-weight: 700; background: var(--bg); border: 1px solid var(--border-bright); border-radius: 8px; color: var(--text); outline: none; }
+  .score-input:focus { border-color: var(--gold); }
+  .vs { font-size: 12px; color: var(--muted); font-weight: 600; text-align: center; }
+  .predict-winner { margin-top: 12px; }
+  .predict-winner label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; text-align: center; }
+  .winner-btns { display: flex; gap: 8px; justify-content: center; }
+  .winner-btn { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-bright); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .winner-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+  .points-info { background: var(--bg); border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .points-info h4 { color: var(--text); font-size: 12px; margin-bottom: 6px; }
+  .point-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .point-val { color: var(--gold); font-weight: 600; }
+
+  /* LEADERBOARD */
+  .leaderboard-table { width: 100%; border-collapse: collapse; }
+  .leaderboard-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .leaderboard-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .leaderboard-table tr:last-child td { border-bottom: none; }
+  .leaderboard-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .rank-badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .rank-1 { background: #f5a623; color: #000; }
+  .rank-2 { background: #94a3b8; color: #000; }
+  .rank-3 { background: #cd7f32; color: #000; }
+  .rank-other { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+  .player-cell { display: flex; align-items: center; gap: 10px; }
+  .player-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .progress-fill { height: 100%; border-radius: 2px; background: var(--gold); }
+  .score-breakdown { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; gap: 8px; }
+  .score-breakdown span { color: var(--dim); }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .stat-val { font-size: 28px; font-weight: 800; color: var(--gold); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* TABS WITHIN PAGE */
+  .sub-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .sub-tab { padding: 10px 16px; font-size: 13px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; font-weight: 500; background: none; border-top: none; border-left: none; border-right: none; }
+  .sub-tab:hover { color: var(--text); }
+  .sub-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .sub-content { display: none; }
+  .sub-content.active { display: block; }
+
+  /* TOASTS */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--surface); border: 1px solid var(--border-bright); border-radius: 10px; padding: 12px 16px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; max-width: 300px; }
+  .toast.success { border-color: rgba(34,197,94,0.4); }
+  .toast.success .toast-icon { color: var(--green); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  
+  /* DEADLINE BANNER */
+  .deadline-banner { background: var(--gold-dim); border: 1px solid rgba(245,166,35,0.25); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* FLAG emoji fallback helpers */
+  .flag { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; }
+  
+  .mobile-menu { display: none; }
+  .mobile-menu.open { display: flex; position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: var(--surface); z-index: 99; flex-direction: column; padding: 16px; gap: 4px; }
+  .mobile-menu-item { padding: 14px 16px; border-radius: 8px; font-size: 15px; color: var(--muted); cursor: pointer; border: none; background: none; text-align: left; width: 100%; font-weight: 500; }
+  .mobile-menu-item:hover, .mobile-menu-item.active { background: var(--card); color: var(--gold); }
+  .hamburger { display: none; background: none; border: none; color: var(--text); font-size: 22px; cursor: pointer; padding: 8px; }
+  
+  @media (max-width: 768px) {
+    .nav-tabs { display: none; }
+    .hamburger { display: block; }
+    .room-cards { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 28px; }
+    .groups-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .page { padding: 20px 16px; }
+    .predict-teams { grid-template-columns: 1fr auto 1fr; gap: 8px; }
+    .predict-flag { font-size: 28px; }
+    .predict-name { font-size: 12px; }
+    .score-input { width: 40px; height: 40px; font-size: 18px; }
+  }
+  /* DEFENSIVE OVERRIDES — guarantee content visibility */
+  .page.active, .page.active * { visibility: visible !important; }
+  .page.active { display: block !important; opacity: 1 !important; }
+  .groups-grid { min-height: 40px; }
+  .group-card { color: var(--text); }
+  .team-name, .team-row span { color: var(--text) !important; }
+  .group-letter { color: var(--gold) !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">⚽ <span>WC2026</span> Brackets</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('home')">Home</button>
+    <button class="nav-tab" onclick="showPage('fixtures')" id="tab-fixtures">Fixtures</button>
+    <button class="nav-tab" onclick="showPage('groups')" id="tab-groups">Groups</button>
+    <button class="nav-tab" onclick="showPage('knockout')" id="tab-knockout">Knockout</button>
+    <button class="nav-tab" onclick="showPage('leaderboard')" id="tab-leaderboard">Leaderboard</button>
+  </div>
+  <div class="nav-user" id="nav-user-area">
+    <button class="btn-sm" onclick="openModal('join-modal')">Join Room</button>
+    <button class="btn-sm btn-primary" onclick="openModal('create-modal')">Create Room</button>
+  </div>
+  <button class="hamburger" onclick="toggleMobileMenu()">☰</button>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <button class="mobile-menu-item" onclick="showPage('home');toggleMobileMenu()">🏠 Home</button>
+  <button class="mobile-menu-item" onclick="showPage('fixtures');toggleMobileMenu()">📅 Fixtures</button>
+  <button class="mobile-menu-item" onclick="showPage('groups');toggleMobileMenu()">🗂 Group Stage</button>
+  <button class="mobile-menu-item" onclick="showPage('knockout');toggleMobileMenu()">⚡ Knockout</button>
+  <button class="mobile-menu-item" onclick="showPage('leaderboard');toggleMobileMenu()">🏆 Leaderboard</button>
+  <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+  <button class="mobile-menu-item" onclick="openModal('create-modal');toggleMobileMenu()">➕ Create Room</button>
+  <button class="mobile-menu-item" onclick="openModal('join-modal');toggleMobileMenu()">🔑 Join Room</button>
+</div>
+
+<!-- PAGES -->
+
+<!-- HOME PAGE -->
+<div class="page active" id="page-home">
+  <div class="hero">
+    <h1>Predict the<br><em>2026 World Cup</em></h1>
+    <p>Create a room, invite friends, make your predictions, earn points.</p>
+    <div class="room-cards">
+      <div class="room-card" onclick="openModal('create-modal')">
+        <div class="icon">🏆</div>
+        <h3>Create a Room</h3>
+        <p>Start a bracket pool for you and your friends</p>
+      </div>
+      <div class="room-card" onclick="openModal('join-modal')">
+        <div class="icon">🔑</div>
+        <h3>Join a Room</h3>
+        <p>Enter an invite code to join an existing pool</p>
+      </div>
+    </div>
+    <div id="active-room-info" style="display:none; max-width:440px; margin:24px auto 0;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <div style="font-weight:700;font-size:16px;" id="room-display-name">—</div>
+            <div style="font-size:12px;color:var(--muted);">You're in · <span id="room-member-count">—</span> members</div>
+          </div>
+          <span class="badge badge-green">Active</span>
+        </div>
+        <div class="room-info">
+          Invite code: <div class="code" id="room-display-code">—</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn-sm" style="flex:1;" onclick="copyInviteCode()">📋 Copy Code</button>
+          <button class="btn-sm btn-primary" style="flex:1;" onclick="startPredicting()">Start Predicting →</button>
+        </div>
+      </div>
+    </div>
+    <div id="welcome-hint" style="margin-top:24px;font-size:13px;color:var(--dim);">
+      Already joined? <a href="#" onclick="restoreSession()" style="color:var(--gold);">Restore your session</a>
+    </div>
+    <div id="sync-status" style="margin-top:12px;font-size:12px;color:var(--dim);"></div>
+  </div>
+  
+  <!-- HOW IT WORKS -->
+  <div style="max-width:800px;margin:0 auto;padding:40px 0;">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;">How it works</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">🏠</div>
+        <div style="font-weight:600;margin-bottom:6px;">1. Create a Room</div>
+        <div style="font-size:13px;color:var(--muted);">One person creates the room and gets a 6-digit invite code</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">📲</div>
+        <div style="font-weight:600;margin-bottom:6px;">2. Share the Code</div>
+        <div style="font-size:13px;color:var(--muted);">Friends open this page and join with the code. Everyone on the same device shares localStorage — or see deploy guide below</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">⚽</div>
+        <div style="font-weight:600;margin-bottom:6px;">3. Make Predictions</div>
+        <div style="font-size:13px;color:var(--muted);">Pick group qualifiers + knockout winners. Lock in before the tournament starts!</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:10px;">🏆</div>
+        <div style="font-weight:600;margin-bottom:6px;">4. Track Points</div>
+        <div style="font-size:13px;color:var(--muted);">Enter real results as matches happen. Scores update automatically on the leaderboard</div>
+      </div>
+    </div>
+    
+    <div style="margin-top:28px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+      <div style="font-weight:600;margin-bottom:10px;">🚀 Deploy so everyone can use it from their own device</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+        This is a single HTML file — deploy it anywhere to share with friends on their own phones:<br>
+        <strong style="color:var(--text);">Option 1 — Netlify Drop:</strong> Drag the <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px;">wc2026-brackets.html</code> file onto <a href="https://app.netlify.com/drop" style="color:var(--gold);">app.netlify.com/drop</a> — instant public URL, free.<br>
+        <strong style="color:var(--text);">Option 2 — GitHub Pages:</strong> Rename to <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px;">index.html</code>, commit to a GitHub repo, enable Pages.<br>
+        <strong style="color:var(--text);">Option 3 — WhatsApp:</strong> Send the file directly. Each person opens it on their device and joins the same room code.<br>
+        <br>
+        <em style="color:var(--dim);">Note: Room data is stored in each browser's localStorage. On the same device/browser, everyone shares data. For true cross-device sync, deploy and share the URL.</em>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIXTURES PAGE -->
+<div class="page" id="page-fixtures">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Official Fixtures</div>
+      <div class="section-subtitle">All kickoff times shown in IST (India Standard Time)</div>
+    </div>
+  </div>
+  <div class="sub-tabs" id="fixtures-subtabs">
+    <button class="sub-tab active" onclick="showFixtureTab('all')">All</button>
+    <button class="sub-tab" onclick="showFixtureTab('group')">Group Stage</button>
+    <button class="sub-tab" onclick="showFixtureTab('knockout')">Knockout</button>
+    <button class="sub-tab" onclick="showFixtureTab('today')">Upcoming</button>
+  </div>
+  <div id="fixtures-list"></div>
+</div>
+
+<!-- GROUPS PAGE -->
+<div class="page" id="page-groups">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Group Stage</div>
+      <div class="section-subtitle">Pick the 2 teams that advance from each group (1st & 2nd), plus your 8 best third-place qualifiers (the “3” button)</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="badge badge-gold" id="groups-progress">0/12 groups done</span>
+      <span class="badge badge-blue" id="thirdplace-count">0/8 third-place picks</span>
+    </div>
+  </div>
+  <div class="deadline-banner">⏰ Lock your group picks before the tournament starts — June 11, 2026</div>
+  <div class="groups-grid" id="groups-grid"></div>
+  <div style="margin-top:20px;text-align:right;">
+    <button class="btn-sm btn-primary" onclick="saveGroupPredictions(); showPage('knockout')">Save & Go to Knockout →</button>
+  </div>
+</div>
+
+<!-- KNOCKOUT PAGE -->
+<div class="page" id="page-knockout">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Knockout Rounds</div>
+      <div class="section-subtitle">Predict match winners from Round of 32 to the Final</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="badge badge-gold" id="knockout-progress">0 predictions</span>
+      <button class="btn-sm btn-primary" onclick="saveKnockoutPredictions()">Save Bracket</button>
+    </div>
+  </div>
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="showSubTab('r32')">Round of 32</button>
+    <button class="sub-tab" onclick="showSubTab('r16')">Round of 16</button>
+    <button class="sub-tab" onclick="showSubTab('qf')">Quarter-Finals</button>
+    <button class="sub-tab" onclick="showSubTab('sf')">Semi-Finals</button>
+    <button class="sub-tab" onclick="showSubTab('final')">Final</button>
+  </div>
+  <div id="ko-sub-r32" class="sub-content active"><div class="bracket-wrap"><div class="bracket" id="bracket-r32"></div></div></div>
+  <div id="ko-sub-r16" class="sub-content"><div class="bracket-wrap"><div class="bracket" id="bracket-r16"></div></div></div>
+  <div id="ko-sub-qf" class="sub-content"><div class="bracket-wrap"><div class="bracket" id="bracket-qf"></div></div></div>
+  <div id="ko-sub-sf" class="sub-content"><div class="bracket-wrap"><div class="bracket" id="bracket-sf"></div></div></div>
+  <div id="ko-sub-final" class="sub-content"><div class="bracket-wrap"><div class="bracket" id="bracket-final"></div></div></div>
+</div>
+
+<!-- LEADERBOARD PAGE -->
+<div class="page" id="page-leaderboard">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Leaderboard</div>
+      <div class="section-subtitle">Points update as tournament results come in</div>
+    </div>
+    <button class="btn-sm" onclick="openModal('score-modal')">+ Enter Result</button>
+  </div>
+  <div class="stats-grid" id="leaderboard-stats"></div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th>Player</th>
+          <th style="text-align:right;">Points</th>
+          <th style="text-align:right;display:none;" class="show-sm">Correct Winners</th>
+          <th style="text-align:right;">Progress</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:20px;">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Scoring System</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Group Stage</div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>Correct qualifier</span><span style="color:var(--gold);font-weight:600;">+3 pts</span></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Knockout Rounds</div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>Correct winner</span><span style="color:var(--gold);font-weight:600;">+5 pts</span></div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>Correct scoreline</span><span style="color:var(--gold);font-weight:600;">+3 pts</span></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Late Round Bonuses</div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>QF correct winner</span><span style="color:var(--gold);font-weight:600;">+8 pts</span></div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>SF correct winner</span><span style="color:var(--gold);font-weight:600;">+12 pts</span></div>
+        <div style="font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>Correct champion</span><span style="color:var(--gold);font-weight:600;">+20 pts</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- CREATE ROOM MODAL -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal">
+    <h2>🏆 Create a Room</h2>
+    <div class="form-group">
+      <label>Room Name</label>
+      <input type="text" id="create-room-name" placeholder="e.g. Office World Cup Pool">
+    </div>
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="create-user-name" placeholder="Your nickname">
+    </div>
+    <div class="form-group">
+      <label>Game Mode</label>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label class="mode-opt">
+          <input type="radio" name="game-mode" value="bracket" checked>
+          <div>
+            <div class="mode-title">🏆 Bracket Mode</div>
+            <div class="mode-desc">Pick group qualifiers + your 8 third-place teams, then predict the full knockout bracket.</div>
+          </div>
+        </label>
+        <label class="mode-opt">
+          <input type="radio" name="game-mode" value="fixture">
+          <div>
+            <div class="mode-title">⚽ Fixture Mode</div>
+            <div class="mode-desc">Predict the scoreline of every match. Exact score = 3 pts, correct outcome = 1 pt. Knockout opens once the group stage ends.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="room-info" id="create-preview" style="display:none;">
+      Your invite code will be:<div class="code" id="create-code-preview">—</div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('create-modal')">Cancel</button>
+      <button class="modal-confirm" onclick="createRoom()">Create Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN ROOM MODAL -->
+<div class="modal-overlay" id="join-modal">
+  <div class="modal">
+    <h2>🔑 Join a Room</h2>
+    <div class="form-group">
+      <label>Invite Code</label>
+      <input type="text" id="join-code" placeholder="e.g. WC2026" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;">
+    </div>
+    <div class="form-group">
+      <label>Your Name</label>
+      <input type="text" id="join-user-name" placeholder="Your nickname">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('join-modal')">Cancel</button>
+      <button class="modal-confirm" onclick="joinRoom()">Join Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- MATCH PREDICT MODAL -->
+<div class="modal-overlay" id="match-modal">
+  <div class="modal">
+    <h2 id="match-modal-title">Predict Match</h2>
+    <div class="predict-teams">
+      <div class="predict-team" id="modal-team-a">
+        <div class="predict-flag" id="modal-flag-a">🏳</div>
+        <div class="predict-name" id="modal-name-a">Team A</div>
+        <div class="predict-score">
+          <input type="number" min="0" max="20" class="score-input" id="score-a" value="0">
+        </div>
+      </div>
+      <div class="vs">vs</div>
+      <div class="predict-team" id="modal-team-b">
+        <div class="predict-flag" id="modal-flag-b">🏳</div>
+        <div class="predict-name" id="modal-name-b">Team B</div>
+        <div class="predict-score">
+          <input type="number" min="0" max="20" class="score-input" id="score-b" value="0">
+        </div>
+      </div>
+    </div>
+    <div class="predict-winner">
+      <label>If draw after 90 mins, who wins?</label>
+      <div class="winner-btns">
+        <button class="winner-btn" id="winner-btn-a" onclick="setWinner('a')"></button>
+        <button class="winner-btn" onclick="setWinner('draw')">No draw (FT result)</button>
+        <button class="winner-btn" id="winner-btn-b" onclick="setWinner('b')"></button>
+      </div>
+    </div>
+    <div class="points-info">
+      <h4>Points for this match</h4>
+      <div class="point-row"><span>Correct winner</span><span class="point-val" id="match-winner-pts">+5</span></div>
+      <div class="point-row"><span>Correct exact scoreline</span><span class="point-val">+3</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('match-modal')">Cancel</button>
+      <button class="modal-confirm" onclick="savePrediction()">Save Prediction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENTER RESULT MODAL (admin) -->
+<div class="modal-overlay" id="score-modal">
+  <div class="modal">
+    <h2>📊 Enter Match Result</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Enter official results to update everyone's scores automatically.</p>
+    <div class="form-group">
+      <label>Round</label>
+      <select id="result-round">
+        <option value="group">Group Stage (record qualifiers)</option>
+        <option value="fixture">Group Match Score (Fixture Mode)</option>
+        <option value="r32">Round of 32</option>
+        <option value="r16">Round of 16</option>
+        <option value="qf">Quarter-Final</option>
+        <option value="sf">Semi-Final</option>
+        <option value="final">Final</option>
+      </select>
+    </div>
+
+    <!-- FIXTURE MATCH RESULT FIELDS (Fixture Mode) -->
+    <div id="fixture-result-fields" style="display:none;">
+      <div class="form-group">
+        <label>Match</label>
+        <select id="result-fixture-match"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:8px;">
+        <div class="form-group" style="margin:0;">
+          <label id="result-fx-label-a">Team A</label>
+          <input type="number" id="result-fx-score-a" min="0" max="20" value="0">
+        </div>
+        <div style="padding-top:20px;text-align:center;color:var(--muted);">–</div>
+        <div class="form-group" style="margin:0;">
+          <label id="result-fx-label-b">Team B</label>
+          <input type="number" id="result-fx-score-b" min="0" max="20" value="0">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Everyone's points for this match update automatically.</div>
+    </div>
+
+    <!-- GROUP RESULT FIELDS -->
+    <div id="group-result-fields" style="display:none;">
+      <div class="form-group">
+        <label>Group</label>
+        <select id="result-group"></select>
+      </div>
+      <div class="form-group">
+        <label>1st place (winner)</label>
+        <select id="result-group-first"></select>
+      </div>
+      <div class="form-group">
+        <label>2nd place (runner-up)</label>
+        <select id="result-group-second"></select>
+      </div>
+      <div class="form-group">
+        <label>Did 3rd place qualify? (one of the 8 best)</label>
+        <select id="result-group-third">
+          <option value="">No / not yet known</option>
+        </select>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Record all 12 groups to unlock the Round of 32.</div>
+    </div>
+
+    <!-- KNOCKOUT RESULT FIELDS -->
+    <div id="ko-result-fields">
+    <div class="form-group">
+      <label>Match</label>
+      <select id="result-match"></select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;margin-bottom:16px;">
+      <div class="form-group" style="margin:0;">
+        <label id="result-label-a">Team A</label>
+        <input type="number" id="result-score-a" min="0" max="20" value="0">
+      </div>
+      <div style="padding-top:20px;text-align:center;color:var(--muted);">–</div>
+      <div class="form-group" style="margin:0;">
+        <label id="result-label-b">Team B</label>
+        <input type="number" id="result-score-b" min="0" max="20" value="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Winner (if went to pens/ET)</label>
+      <select id="result-winner">
+        <option value="">FT result is final</option>
+        <option value="a" id="result-winner-a">Team A wins (ET/Pens)</option>
+        <option value="b" id="result-winner-b">Team B wins (ET/Pens)</option>
+      </select>
+    </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal('score-modal')">Cancel</button>
+      <button class="modal-confirm" onclick="submitResult()">Update Scores</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// Self-check: if after load the groups grid is empty, show a diagnostic banner.
+window.addEventListener('error', function(e){
+  var b=document.createElement('div');
+  b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#ef4444;color:#fff;padding:10px;font:12px monospace;';
+  b.textContent='JS error: '+e.message+' @line '+e.lineno;
+  if(document.body) document.body.appendChild(b);
+});
+// ============================================================
+// DATA: FIFA WORLD CUP 2026 TEAMS & STRUCTURE
+// ============================================================
+
+const TEAMS = {
+  // GROUP A
+  'Mexico': { flag: '🇲🇽', name: 'Mexico', group: 'A' },
+  'South Africa': { flag: '🇿🇦', name: 'South Africa', group: 'A' },
+  'South Korea': { flag: '🇰🇷', name: 'South Korea', group: 'A' },
+  'Czechia': { flag: '🇨🇿', name: 'Czechia', group: 'A' },
+  // GROUP B
+  'Canada': { flag: '🇨🇦', name: 'Canada', group: 'B' },
+  'Switzerland': { flag: '🇨🇭', name: 'Switzerland', group: 'B' },
+  'Qatar': { flag: '🇶🇦', name: 'Qatar', group: 'B' },
+  'Bosnia': { flag: '🇧🇦', name: 'Bosnia & Herzegovina', group: 'B' },
+  // GROUP C
+  'Brazil': { flag: '🇧🇷', name: 'Brazil', group: 'C' },
+  'Morocco': { flag: '🇲🇦', name: 'Morocco', group: 'C' },
+  'Haiti': { flag: '🇭🇹', name: 'Haiti', group: 'C' },
+  'Scotland': { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Scotland', group: 'C' },
+  // GROUP D
+  'USA': { flag: '🇺🇸', name: 'USA', group: 'D' },
+  'Paraguay': { flag: '🇵🇾', name: 'Paraguay', group: 'D' },
+  'Australia': { flag: '🇦🇺', name: 'Australia', group: 'D' },
+  'Turkiye': { flag: '🇹🇷', name: 'Türkiye', group: 'D' },
+  // GROUP E
+  'Germany': { flag: '🇩🇪', name: 'Germany', group: 'E' },
+  'Curacao': { flag: '🇨🇼', name: 'Curaçao', group: 'E' },
+  'Ivory Coast': { flag: '🇨🇮', name: 'Ivory Coast', group: 'E' },
+  'Ecuador': { flag: '🇪🇨', name: 'Ecuador', group: 'E' },
+  // GROUP F
+  'Netherlands': { flag: '🇳🇱', name: 'Netherlands', group: 'F' },
+  'Japan': { flag: '🇯🇵', name: 'Japan', group: 'F' },
+  'Tunisia': { flag: '🇹🇳', name: 'Tunisia', group: 'F' },
+  'Sweden': { flag: '🇸🇪', name: 'Sweden', group: 'F' },
+  // GROUP G
+  'Belgium': { flag: '🇧🇪', name: 'Belgium', group: 'G' },
+  'Egypt': { flag: '🇪🇬', name: 'Egypt', group: 'G' },
+  'Iran': { flag: '🇮🇷', name: 'Iran', group: 'G' },
+  'New Zealand': { flag: '🇳🇿', name: 'New Zealand', group: 'G' },
+  // GROUP H
+  'Spain': { flag: '🇪🇸', name: 'Spain', group: 'H' },
+  'Cape Verde': { flag: '🇨🇻', name: 'Cape Verde', group: 'H' },
+  'Saudi Arabia': { flag: '🇸🇦', name: 'Saudi Arabia', group: 'H' },
+  'Uruguay': { flag: '🇺🇾', name: 'Uruguay', group: 'H' },
+  // GROUP I
+  'France': { flag: '🇫🇷', name: 'France', group: 'I' },
+  'Senegal': { flag: '🇸🇳', name: 'Senegal', group: 'I' },
+  'Norway': { flag: '🇳🇴', name: 'Norway', group: 'I' },
+  'Iraq': { flag: '🇮🇶', name: 'Iraq', group: 'I' },
+  // GROUP J
+  'Argentina': { flag: '🇦🇷', name: 'Argentina', group: 'J' },
+  'Algeria': { flag: '🇩🇿', name: 'Algeria', group: 'J' },
+  'Austria': { flag: '🇦🇹', name: 'Austria', group: 'J' },
+  'Jordan': { flag: '🇯🇴', name: 'Jordan', group: 'J' },
+  // GROUP K
+  'Portugal': { flag: '🇵🇹', name: 'Portugal', group: 'K' },
+  'Uzbekistan': { flag: '🇺🇿', name: 'Uzbekistan', group: 'K' },
+  'Colombia': { flag: '🇨🇴', name: 'Colombia', group: 'K' },
+  'DR Congo': { flag: '🇨🇩', name: 'DR Congo', group: 'K' },
+  // GROUP L
+  'England': { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', name: 'England', group: 'L' },
+  'Croatia': { flag: '🇭🇷', name: 'Croatia', group: 'L' },
+  'Ghana': { flag: '🇬🇭', name: 'Ghana', group: 'L' },
+  'Panama': { flag: '🇵🇦', name: 'Panama', group: 'L' },
+};
+
+// Group definitions — official 2026 FIFA World Cup draw
+const GROUPS = {
+  A: ['Mexico', 'South Africa', 'South Korea', 'Czechia'],
+  B: ['Canada', 'Switzerland', 'Qatar', 'Bosnia'],
+  C: ['Brazil', 'Morocco', 'Haiti', 'Scotland'],
+  D: ['USA', 'Paraguay', 'Australia', 'Turkiye'],
+  E: ['Germany', 'Curacao', 'Ivory Coast', 'Ecuador'],
+  F: ['Netherlands', 'Japan', 'Tunisia', 'Sweden'],
+  G: ['Belgium', 'Egypt', 'Iran', 'New Zealand'],
+  H: ['Spain', 'Cape Verde', 'Saudi Arabia', 'Uruguay'],
+  I: ['France', 'Senegal', 'Norway', 'Iraq'],
+  J: ['Argentina', 'Algeria', 'Austria', 'Jordan'],
+  K: ['Portugal', 'Uzbekistan', 'Colombia', 'DR Congo'],
+  L: ['England', 'Croatia', 'Ghana', 'Panama'],
+};
+
+// ============================================================
+// KNOCKOUT BRACKET — official 2026 structure (32 teams)
+// 12 group winners + 12 runners-up + 8 best third-place teams.
+// Slot label formats:
+//   "1A" = winner of Group A    "2A" = runner-up of Group A
+//   "3-WXYZ" = a third-place team from one of groups W/X/Y/Z
+//   "W-r32_1" = winner of match r32_1
+// Dates are the official round dates; times localized to IST.
+// ============================================================
+
+// The eight third-place slots, each tied to a set of candidate groups
+// (per FIFA's standard third-place allocation table for 12 groups).
+const THIRD_SLOTS = [
+  { slot: 'T1', from: ['A','B','C','D'] },
+  { slot: 'T2', from: ['A','B','C','D'] },
+  { slot: 'T3', from: ['E','F','G','H'] },
+  { slot: 'T4', from: ['E','F','G','H'] },
+  { slot: 'T5', from: ['I','J','K','L'] },
+  { slot: 'T6', from: ['I','J','K','L'] },
+  { slot: 'T7', from: ['A','E','I','J'] },
+  { slot: 'T8', from: ['B','F','K','L'] },
+];
+
+const R32_FIXTURES = [
+  { id: 'r32_1',  a: '1A', b: '3-T1', label: 'Match 73', date: '2026-06-28' },
+  { id: 'r32_2',  a: '1C', b: '2F',   label: 'Match 74', date: '2026-06-28' },
+  { id: 'r32_3',  a: '1E', b: '3-T3', label: 'Match 75', date: '2026-06-29' },
+  { id: 'r32_4',  a: '1F', b: '2C',   label: 'Match 76', date: '2026-06-29' },
+  { id: 'r32_5',  a: '1B', b: '3-T2', label: 'Match 77', date: '2026-06-29' },
+  { id: 'r32_6',  a: '1I', b: '3-T5', label: 'Match 78', date: '2026-06-30' },
+  { id: 'r32_7',  a: '1D', b: '2E',   label: 'Match 79', date: '2026-06-30' },
+  { id: 'r32_8',  a: '1G', b: '3-T4', label: 'Match 80', date: '2026-06-30' },
+  { id: 'r32_9',  a: '2A', b: '2B',   label: 'Match 81', date: '2026-07-01' },
+  { id: 'r32_10', a: '1L', b: '3-T8', label: 'Match 82', date: '2026-07-01' },
+  { id: 'r32_11', a: '1J', b: '2H',   label: 'Match 83', date: '2026-07-01' },
+  { id: 'r32_12', a: '1H', b: '2J',   label: 'Match 84', date: '2026-07-02' },
+  { id: 'r32_13', a: '1K', b: '3-T6', label: 'Match 85', date: '2026-07-02' },
+  { id: 'r32_14', a: '2D', b: '2G',   label: 'Match 86', date: '2026-07-02' },
+  { id: 'r32_15', a: '2I', b: '2L',   label: 'Match 87', date: '2026-07-03' },
+  { id: 'r32_16', a: '2K', b: '3-T7', label: 'Match 88', date: '2026-07-03' },
+];
+
+const R16_FIXTURES = [
+  { id: 'r16_1', a: 'W-r32_1',  b: 'W-r32_2',  label: 'Match 89', date: '2026-07-04' },
+  { id: 'r16_2', a: 'W-r32_3',  b: 'W-r32_4',  label: 'Match 90', date: '2026-07-04' },
+  { id: 'r16_3', a: 'W-r32_5',  b: 'W-r32_6',  label: 'Match 91', date: '2026-07-05' },
+  { id: 'r16_4', a: 'W-r32_7',  b: 'W-r32_8',  label: 'Match 92', date: '2026-07-05' },
+  { id: 'r16_5', a: 'W-r32_9',  b: 'W-r32_10', label: 'Match 93', date: '2026-07-06' },
+  { id: 'r16_6', a: 'W-r32_11', b: 'W-r32_12', label: 'Match 94', date: '2026-07-06' },
+  { id: 'r16_7', a: 'W-r32_13', b: 'W-r32_14', label: 'Match 95', date: '2026-07-07' },
+  { id: 'r16_8', a: 'W-r32_15', b: 'W-r32_16', label: 'Match 96', date: '2026-07-07' },
+];
+
+const QF_FIXTURES = [
+  { id: 'qf_1', a: 'W-r16_1', b: 'W-r16_2', label: 'Quarter-Final 1', date: '2026-07-09' },
+  { id: 'qf_2', a: 'W-r16_3', b: 'W-r16_4', label: 'Quarter-Final 2', date: '2026-07-10' },
+  { id: 'qf_3', a: 'W-r16_5', b: 'W-r16_6', label: 'Quarter-Final 3', date: '2026-07-10' },
+  { id: 'qf_4', a: 'W-r16_7', b: 'W-r16_8', label: 'Quarter-Final 4', date: '2026-07-11' },
+];
+
+const SF_FIXTURES = [
+  { id: 'sf_1', a: 'W-qf_1', b: 'W-qf_2', label: 'Semi-Final 1', date: '2026-07-14' },
+  { id: 'sf_2', a: 'W-qf_3', b: 'W-qf_4', label: 'Semi-Final 2', date: '2026-07-15' },
+];
+
+const FINAL_FIXTURES = [
+  { id: 'final_1', a: 'W-sf_1', b: 'W-sf_2', label: '🏆 World Cup Final', date: '2026-07-19' },
+];
+
+const ROUND_PTS = { r32: 5, r16: 5, qf: 8, sf: 12, final: 20 };
+const THIRD_PLACE_PTS = 3;
+const MAX_THIRD = 8;
+// Fixture Mode scoring: exact scoreline = 3, correct outcome (W/D/L) only = 1
+const FIXTURE_EXACT_PTS = 3;
+const FIXTURE_OUTCOME_PTS = 1;
+
+// Current room's game mode ('bracket' default, or 'fixture')
+function roomMode() {
+  return (state.room && state.room.mode) === 'fixture' ? 'fixture' : 'bracket';
+}
+
+// Group-stage match-day windows (the three rounds of fixtures per group fall
+// within these dates). Shown for context on each group card.
+const GROUP_DATES = {
+  A: 'Jun 11 · 18 · 24', B: 'Jun 12 · 18 · 24', C: 'Jun 13 · 19 · 25',
+  D: 'Jun 13 · 19 · 25', E: 'Jun 12 · 18 · 24', F: 'Jun 14 · 20 · 26',
+  G: 'Jun 15 · 20 · 26', H: 'Jun 14 · 20 · 26', I: 'Jun 13 · 19 · 25',
+  J: 'Jun 15 · 21 · 27', K: 'Jun 16 · 21 · 27', L: 'Jun 16 · 23 · 27',
+};
+const ROUND_ORDER = ['r32', 'r16', 'qf', 'sf', 'final'];
+const ROUND_DATES = {
+  r32: 'Jun 28 – Jul 3', r16: 'Jul 4 – 7', qf: 'Jul 9 – 11',
+  sf: 'Jul 14 – 15', final: 'Jul 19',
+};
+
+// ============================================================
+// OFFICIAL FIXTURE LIST (group stage) — all times converted to IST
+// ============================================================
+const GROUP_FIXTURES = [
+  { a:"Mexico", b:"South Africa", grp:"A", ist:"2026-06-12T00:30", venue:"Mexico City" },
+  { a:"South Korea", b:"Czechia", grp:"A", ist:"2026-06-12T07:30", venue:"Guadalajara" },
+  { a:"Canada", b:"Bosnia", grp:"B", ist:"2026-06-13T00:30", venue:"Toronto" },
+  { a:"USA", b:"Paraguay", grp:"D", ist:"2026-06-13T06:30", venue:"Los Angeles" },
+  { a:"Qatar", b:"Switzerland", grp:"B", ist:"2026-06-14T00:30", venue:"San Francisco" },
+  { a:"Brazil", b:"Morocco", grp:"C", ist:"2026-06-14T03:30", venue:"New York/NJ" },
+  { a:"Haiti", b:"Scotland", grp:"C", ist:"2026-06-14T06:30", venue:"Boston" },
+  { a:"Australia", b:"Turkiye", grp:"D", ist:"2026-06-14T09:30", venue:"Vancouver" },
+  { a:"Germany", b:"Curacao", grp:"E", ist:"2026-06-14T22:30", venue:"Houston" },
+  { a:"Netherlands", b:"Japan", grp:"F", ist:"2026-06-15T01:30", venue:"Dallas" },
+  { a:"Ivory Coast", b:"Ecuador", grp:"E", ist:"2026-06-15T04:30", venue:"Philadelphia" },
+  { a:"Sweden", b:"Tunisia", grp:"F", ist:"2026-06-15T07:30", venue:"Monterrey" },
+  { a:"Spain", b:"Cape Verde", grp:"H", ist:"2026-06-15T21:30", venue:"Atlanta" },
+  { a:"Belgium", b:"Egypt", grp:"G", ist:"2026-06-16T00:30", venue:"Vancouver" },
+  { a:"Saudi Arabia", b:"Uruguay", grp:"H", ist:"2026-06-16T03:30", venue:"Miami" },
+  { a:"Iran", b:"New Zealand", grp:"G", ist:"2026-06-16T06:30", venue:"Los Angeles" },
+  { a:"France", b:"Senegal", grp:"I", ist:"2026-06-17T00:30", venue:"New York/NJ" },
+  { a:"Iraq", b:"Norway", grp:"I", ist:"2026-06-17T03:30", venue:"Boston" },
+  { a:"Argentina", b:"Algeria", grp:"J", ist:"2026-06-17T06:30", venue:"Kansas City" },
+  { a:"Austria", b:"Jordan", grp:"J", ist:"2026-06-17T09:30", venue:"San Francisco" },
+  { a:"Portugal", b:"DR Congo", grp:"K", ist:"2026-06-17T22:30", venue:"Houston" },
+  { a:"England", b:"Croatia", grp:"L", ist:"2026-06-18T01:30", venue:"Dallas" },
+  { a:"Ghana", b:"Panama", grp:"L", ist:"2026-06-18T04:30", venue:"Toronto" },
+  { a:"Uzbekistan", b:"Colombia", grp:"K", ist:"2026-06-18T07:30", venue:"Mexico City" },
+  { a:"Czechia", b:"South Africa", grp:"A", ist:"2026-06-18T21:30", venue:"Atlanta" },
+  { a:"Switzerland", b:"Bosnia", grp:"B", ist:"2026-06-19T00:30", venue:"Los Angeles" },
+  { a:"Canada", b:"Qatar", grp:"B", ist:"2026-06-19T03:30", venue:"Vancouver" },
+  { a:"Mexico", b:"South Korea", grp:"A", ist:"2026-06-19T06:30", venue:"Guadalajara" },
+  { a:"Scotland", b:"Morocco", grp:"C", ist:"2026-06-20T03:30", venue:"Boston" },
+  { a:"USA", b:"Australia", grp:"D", ist:"2026-06-20T00:30", venue:"Seattle" },
+  { a:"Brazil", b:"Haiti", grp:"C", ist:"2026-06-20T06:00", venue:"Philadelphia" },
+  { a:"Turkiye", b:"Paraguay", grp:"D", ist:"2026-06-20T08:30", venue:"San Francisco" },
+  { a:"Netherlands", b:"Sweden", grp:"F", ist:"2026-06-20T22:30", venue:"Houston" },
+  { a:"Germany", b:"Ivory Coast", grp:"E", ist:"2026-06-21T01:30", venue:"Toronto" },
+  { a:"Ecuador", b:"Curacao", grp:"E", ist:"2026-06-21T08:30", venue:"Kansas City" },
+  { a:"Tunisia", b:"Japan", grp:"F", ist:"2026-06-21T09:30", venue:"Monterrey" },
+  { a:"Spain", b:"Saudi Arabia", grp:"H", ist:"2026-06-21T21:30", venue:"Atlanta" },
+  { a:"Belgium", b:"Iran", grp:"G", ist:"2026-06-22T00:30", venue:"Los Angeles" },
+  { a:"Uruguay", b:"Cape Verde", grp:"H", ist:"2026-06-22T03:30", venue:"Miami" },
+  { a:"New Zealand", b:"Egypt", grp:"G", ist:"2026-06-22T06:30", venue:"Vancouver" },
+  { a:"Argentina", b:"Austria", grp:"J", ist:"2026-06-22T22:30", venue:"Dallas" },
+  { a:"France", b:"Iraq", grp:"I", ist:"2026-06-23T02:30", venue:"Philadelphia" },
+  { a:"Norway", b:"Senegal", grp:"I", ist:"2026-06-23T05:30", venue:"New York/NJ" },
+  { a:"Jordan", b:"Algeria", grp:"J", ist:"2026-06-23T08:30", venue:"San Francisco" },
+  { a:"Portugal", b:"Uzbekistan", grp:"K", ist:"2026-06-23T22:30", venue:"Houston" },
+  { a:"England", b:"Ghana", grp:"L", ist:"2026-06-24T01:30", venue:"Boston" },
+  { a:"Panama", b:"Croatia", grp:"L", ist:"2026-06-24T04:30", venue:"Toronto" },
+  { a:"Colombia", b:"DR Congo", grp:"K", ist:"2026-06-24T07:30", venue:"Guadalajara" },
+  { a:"Switzerland", b:"Canada", grp:"B", ist:"2026-06-25T00:30", venue:"Vancouver" },
+  { a:"Bosnia", b:"Qatar", grp:"B", ist:"2026-06-25T00:30", venue:"Seattle" },
+  { a:"Scotland", b:"Brazil", grp:"C", ist:"2026-06-25T03:30", venue:"Miami" },
+  { a:"Morocco", b:"Haiti", grp:"C", ist:"2026-06-25T03:30", venue:"Atlanta" },
+  { a:"Czechia", b:"Mexico", grp:"A", ist:"2026-06-25T06:30", venue:"Mexico City" },
+  { a:"South Africa", b:"South Korea", grp:"A", ist:"2026-06-25T06:30", venue:"Monterrey" },
+  { a:"Ecuador", b:"Germany", grp:"E", ist:"2026-06-26T01:30", venue:"New York/NJ" },
+  { a:"Curacao", b:"Ivory Coast", grp:"E", ist:"2026-06-26T01:30", venue:"Philadelphia" },
+  { a:"Japan", b:"Sweden", grp:"F", ist:"2026-06-26T04:30", venue:"Dallas" },
+  { a:"Tunisia", b:"Netherlands", grp:"F", ist:"2026-06-26T04:30", venue:"Kansas City" },
+  { a:"Turkiye", b:"USA", grp:"D", ist:"2026-06-26T07:30", venue:"Los Angeles" },
+  { a:"Paraguay", b:"Australia", grp:"D", ist:"2026-06-26T07:30", venue:"San Francisco" },
+  { a:"Norway", b:"France", grp:"I", ist:"2026-06-27T00:30", venue:"Boston" },
+  { a:"Senegal", b:"Iraq", grp:"I", ist:"2026-06-27T00:30", venue:"Toronto" },
+  { a:"Cape Verde", b:"Saudi Arabia", grp:"H", ist:"2026-06-27T05:30", venue:"Houston" },
+  { a:"Uruguay", b:"Spain", grp:"H", ist:"2026-06-27T05:30", venue:"Guadalajara" },
+  { a:"Egypt", b:"Iran", grp:"G", ist:"2026-06-27T08:30", venue:"Seattle" },
+  { a:"New Zealand", b:"Belgium", grp:"G", ist:"2026-06-27T08:30", venue:"Vancouver" },
+  { a:"Panama", b:"England", grp:"L", ist:"2026-06-28T02:30", venue:"New York/NJ" },
+  { a:"Croatia", b:"Ghana", grp:"L", ist:"2026-06-28T02:30", venue:"Philadelphia" },
+  { a:"Colombia", b:"Portugal", grp:"K", ist:"2026-06-28T05:00", venue:"Miami" },
+  { a:"DR Congo", b:"Uzbekistan", grp:"K", ist:"2026-06-28T05:00", venue:"Atlanta" },
+  { a:"Algeria", b:"Austria", grp:"J", ist:"2026-06-28T07:30", venue:"Kansas City" },
+  { a:"Jordan", b:"Argentina", grp:"J", ist:"2026-06-28T07:30", venue:"Dallas" },
+];
+
+// Format an IST ISO datetime ("YYYY-MM-DDTHH:MM") for display.
+function fmtIST(iso) {
+  if (!iso) return '';
+  const [datePart, timePart] = iso.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dt = new Date(Date.UTC(y, m - 1, d, hh, mm));
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  let h12 = hh % 12; if (h12 === 0) h12 = 12;
+  const mmStr = mm < 10 ? '0' + mm : '' + mm;
+  return {
+    day: days[dt.getUTCDay()],
+    date: months[m - 1] + ' ' + d,
+    time: h12 + ':' + mmStr + ' ' + ampm + ' IST',
+    sortKey: iso,
+  };
+}
+
+
+// Format an ISO date (YYYY-MM-DD) as a readable IST match date.
+// Matches are evening/night US time, which lands next-day morning IST,
+// so we show the IST calendar date with a clear label.
+function fmtMatchDateIST(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // US evening kickoff => roughly +1 day into IST early morning.
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return months[dt.getUTCMonth()] + ' ' + dt.getUTCDate() + ' (IST)';
+}
+
+// ============================================================
+// MATCHDAY LOCKING (Fixture Mode)
+// A "matchday" = all group matches sharing the same IST calendar date.
+// Rules:
+//   • The first 3 matchdays are unlocked from the start.
+//   • Every later matchday unlocks 2 days before its earliest kickoff
+//     and RE-LOCKS once that earliest kickoff passes.
+//   • The first 3 also lock at their own earliest kickoff.
+// Result: a matchday is editable only within
+//     [earliest_kickoff − 2 days, earliest_kickoff)
+//   except matchdays 1–3, whose window opens at the start of time.
+// ============================================================
+
+const MATCHDAY_OPEN_COUNT = 3;       // first N matchdays open immediately
+const MATCHDAY_LEAD_DAYS = 2;        // others unlock this many days early
+const DAY_MS = 24 * 3600 * 1000;
+
+// Parse an IST wall-clock ISO ("YYYY-MM-DDTHH:MM") into a real instant.
+// IST is UTC+5:30, so the true UTC instant is the IST value minus 5h30m.
+function istToInstant(iso) {
+  const [datePart, timePart] = iso.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  return Date.UTC(y, m - 1, d, hh, mm) - (5 * 60 + 30) * 60 * 1000;
+}
+
+// Build the ordered matchday table once from GROUP_FIXTURES.
+// Each entry: { date:'YYYY-MM-DD', index, earliestInstant }
+const MATCHDAYS = (function buildMatchdays() {
+  const byDate = {};
+  GROUP_FIXTURES.forEach(fx => {
+    const date = fx.ist.split('T')[0];
+    const inst = istToInstant(fx.ist);
+    if (byDate[date] === undefined || inst < byDate[date]) byDate[date] = inst;
+  });
+  return Object.keys(byDate).sort().map((date, i) => ({
+    date,
+    index: i,                       // 0-based
+    earliestInstant: byDate[date],
+  }));
+})();
+
+// Map an IST date string to its matchday entry.
+const MATCHDAY_BY_DATE = MATCHDAYS.reduce((acc, md) => { acc[md.date] = md; return acc; }, {});
+
+// Server-clock offset (serverNow - deviceNow), set once at init from Supabase's
+// Date response header. Device clock is spoofable; this makes unlocking
+// tamper-resistant when cloud is reachable. Defaults to 0 (device time).
+let serverClockOffsetMs = 0;
+
+// Tamper-resistant "now" instant.
+function nowInstant() {
+  return Date.now() + serverClockOffsetMs;
+}
+
+// Fetch trusted time from Supabase (uses the HTTP Date header — no table needed).
+async function syncServerClock() {
+  if (!useCloud || !SUPABASE_URL) return;
+  try {
+    const t0 = Date.now();
+    const resp = await fetch(SUPABASE_URL + '/auth/v1/health', {
+      method: 'HEAD',
+      headers: { apikey: SUPABASE_ANON_KEY },
+      cache: 'no-store',
+    });
+    const t1 = Date.now();
+    const dateHdr = resp.headers.get('date');
+    if (dateHdr) {
+      const serverMs = new Date(dateHdr).getTime();
+      if (!isNaN(serverMs)) {
+        // Account for half the round-trip as approximate one-way latency.
+        const localMid = t0 + (t1 - t0) / 2;
+        serverClockOffsetMs = serverMs - localMid;
+      }
+    }
+  } catch (e) {
+    // Unreachable / blocked => fall back to device clock (offset stays 0).
+    serverClockOffsetMs = 0;
+  }
+}
+
+// Lock state for a matchday at the current (trusted) time.
+// Returns { locked, reason, opensAt, closesAt }.
+//   reason: 'open' | 'upcoming' (not yet unlocked) | 'closed' (kickoff passed)
+function matchdayLockState(md, now) {
+  now = now ?? nowInstant();
+  const closesAt = md.earliestInstant;                 // re-locks at first kickoff
+  const opensAt = md.index < MATCHDAY_OPEN_COUNT
+    ? -Infinity                                        // first N open from the start
+    : md.earliestInstant - MATCHDAY_LEAD_DAYS * DAY_MS;
+  if (now >= closesAt) return { locked: true, reason: 'closed', opensAt, closesAt };
+  if (now < opensAt)    return { locked: true, reason: 'upcoming', opensAt, closesAt };
+  return { locked: false, reason: 'open', opensAt, closesAt };
+}
+
+// Convenience: lock state for the matchday a fixture belongs to.
+function fixtureLockState(fx, now) {
+  const md = MATCHDAY_BY_DATE[fx.ist.split('T')[0]];
+  if (!md) return { locked: false, reason: 'open' };   // knockout / unknown => not gated here
+  return matchdayLockState(md, now);
+}
+
+// Short human label for when a locked matchday opens (in IST), e.g. "Jun 20".
+function unlockLabel(opensAtInstant) {
+  if (!isFinite(opensAtInstant)) return '';
+  const istWall = new Date(opensAtInstant + (5 * 60 + 30) * 60 * 1000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[istWall.getUTCMonth()] + ' ' + istWall.getUTCDate();
+}
+
+// ============================================================
+// STATE
+// ============================================================
+
+let state = {
+  room: null,        // { id, name, code, members: [] }
+  user: null,        // { id, name }
+  groupPreds: {},    // { A: { first: 'USA', second: 'Mexico' }, ... }
+  thirdPlace: [],    // up to 8 team keys chosen as best third-place qualifiers
+  knockoutPreds: {}, // { 'r32_1': { teamA, teamB, scoreA, scoreB, winner } }
+  fixturePreds: {},  // Fixture Mode: { 'gm_0': { scoreA, scoreB }, ... } per group match index
+  results: {},       // same shape but official results
+  scores: {},        // { userId: { total, breakdown } }
+};
+
+// ============================================================
+// BACKEND CONFIG — paste your Supabase details here to enable
+// cross-device sync. Leave blank to use local-only (single browser).
+// ============================================================
+const SUPABASE_URL = 'https://fgvjnpnchveuepabxjlt.supabase.co';       // e.g. 'https://abcdxyz.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndmpucG5jaHZldWVwYWJ4amx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzUwOTcsImV4cCI6MjA5Njc1MTA5N30.Z77cqvA7WBkVWlLvL0g6CFRAGyw7M4AsoRDFl8BvhN8';  // your project's anon/public key
+
+// Detect a sandboxed preview iframe (e.g. about:srcdoc) where network fetch is
+// proxied via postMessage and cannot serialize Headers — Supabase can't work
+// there. On a real deployed page (http/https top-level), this is false.
+function inPreviewSandbox() {
+  try {
+    // about:srcdoc or no real http(s) origin => sandboxed preview
+    if (location.protocol === 'about:' || location.href.indexOf('srcdoc') !== -1) return true;
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') return true;
+    // running inside an iframe whose parent differs (best-effort)
+    if (window.self !== window.top) return true;
+  } catch (e) {
+    // cross-origin access throws => we are framed
+    return true;
+  }
+  return false;
+}
+
+const IS_SANDBOX = inPreviewSandbox();
+
+let sbClient = null;
+let useCloud = false;
+if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && !IS_SANDBOX) {
+  try {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    useCloud = true;
+  } catch (e) { useCloud = false; }
+}
+
+// Safe storage layer — falls back to in-memory if localStorage is blocked
+// (sandboxed iframes, private mode, file://, some in-app browsers)
+let memoryStore = {};
+let storageWorks = (function() {
+  try {
+    const t = '__wc_test__';
+    window.localStorage.setItem(t, '1');
+    window.localStorage.removeItem(t);
+    return true;
+  } catch(e) { return false; }
+})();
+
+function safeGet(key) {
+  if (storageWorks) {
+    try { return window.localStorage.getItem(key); } catch(e) { storageWorks = false; }
+  }
+  return memoryStore[key] ?? null;
+}
+function safeSet(key, val) {
+  if (storageWorks) {
+    try { window.localStorage.setItem(key, val); return; } catch(e) { storageWorks = false; }
+  }
+  memoryStore[key] = String(val);
+}
+
+// Load/save the local session (which room + user this browser belongs to)
+function loadState() {
+  try {
+    const saved = safeGet('wc2026_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try { safeSet('wc2026_state', JSON.stringify(state)); } catch(e) {}
+}
+
+// ============================================================
+// ROOM PERSISTENCE — async, routes to Supabase or localStorage
+// A room is one row: { code (PK), data (jsonb) }
+// ============================================================
+
+function getRoomKey(code) { return `wc2026_room_${code}`; }
+
+// Local-only implementations
+function loadRoomLocal(code) {
+  try {
+    const d = safeGet(getRoomKey(code));
+    return d ? JSON.parse(d) : null;
+  } catch(e) { return null; }
+}
+function saveRoomLocal(roomData) {
+  try { safeSet(getRoomKey(roomData.code), JSON.stringify(roomData)); } catch(e) {}
+}
+
+// Format a Supabase error object into a readable string
+function fmtErr(e) {
+  if (!e) return 'unknown error';
+  if (typeof e === 'string') return e;
+  const parts = [];
+  if (e.message) parts.push(e.message);
+  if (e.code) parts.push('code=' + e.code);
+  if (e.details) parts.push(e.details);
+  if (e.hint) parts.push('hint: ' + e.hint);
+  return parts.length ? parts.join(' | ') : JSON.stringify(e);
+}
+
+// Async room read — used everywhere via await
+async function getRoom(code) {
+  if (useCloud) {
+    try {
+      const { data, error } = await sbClient
+        .from('rooms').select('data').eq('code', code).maybeSingle();
+      if (error) throw error;
+      return data ? data.data : null;
+    } catch (e) {
+      const msg = fmtErr(e);
+      console.error('Supabase getRoom failed, falling back to local:', msg, e);
+      toast('Cloud read failed: ' + msg, 'info');
+      return loadRoomLocal(code);
+    }
+  }
+  return loadRoomLocal(code);
+}
+
+// Async room write (upsert) — used everywhere via await
+async function putRoom(roomData) {
+  // Always keep a local copy too (offline resilience)
+  saveRoomLocal(roomData);
+  if (useCloud) {
+    try {
+      const { error } = await sbClient
+        .from('rooms')
+        .upsert({ code: roomData.code, data: roomData }, { onConflict: 'code' });
+      if (error) throw error;
+    } catch (e) {
+      const msg = fmtErr(e);
+      console.error('Supabase putRoom failed (saved locally):', msg, e);
+      toast('Cloud save failed: ' + msg, 'info');
+    }
+  }
+}
+
+// Realtime: re-render leaderboard/room when the current room changes elsewhere
+let roomChannel = null;
+function subscribeToRoom(code) {
+  if (!useCloud || !code) return;
+  if (roomChannel) { sbClient.removeChannel(roomChannel); roomChannel = null; }
+  roomChannel = sbClient
+    .channel('room-' + code)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'rooms', filter: 'code=eq.' + code },
+      async (payload) => {
+        if (payload.new && payload.new.data) {
+          state.room = payload.new.data;
+          saveRoomLocal(state.room);
+          showRoomInfo();
+          renderLeaderboard();
+          renderKnockout();
+        }
+      })
+    .subscribe();
+}
+
+// ============================================================
+// NAV & PAGES
+// ============================================================
+
+function showPage(id) {
+  // In Fixture Mode there is no group-prediction page; route it to Fixtures.
+  if (id === 'groups' && roomMode() === 'fixture') id = 'fixtures';
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const tab = document.querySelector(`[onclick="showPage('${id}')"]`);
+  if (tab) tab.classList.add('active');
+
+  if (id === 'groups') renderGroups();
+  if (id === 'knockout') renderKnockout();
+  if (id === 'leaderboard') renderLeaderboard();
+  if (id === 'fixtures') renderFixtures();
+}
+
+function showSubTab(id) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sub-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[onclick="showSubTab('${id}')"]`).classList.add('active');
+  document.getElementById('ko-sub-' + id).classList.add('active');
+}
+
+// ============================================================
+// FIXTURES TAB
+// ============================================================
+
+let fixtureFilter = 'all';
+
+function showFixtureTab(which) {
+  fixtureFilter = which;
+  document.querySelectorAll('#fixtures-subtabs .sub-tab').forEach(t => t.classList.remove('active'));
+  const tab = document.querySelector(`[onclick="showFixtureTab('${which}')"]`);
+  if (tab) tab.classList.add('active');
+  renderFixtures();
+}
+
+// Build the unified fixture list (group matches + knockout rounds).
+function buildAllFixtures() {
+  const list = [];
+  // Group stage — has real teams and exact IST times
+  GROUP_FIXTURES.forEach((fx, i) => {
+    list.push({
+      kind: 'group',
+      gmId: 'gm_' + i,
+      label: 'Group ' + fx.grp,
+      teamAKey: fx.a, teamBKey: fx.b,
+      teamAName: TEAMS[fx.a] ? TEAMS[fx.a].name : fx.a,
+      teamAFlag: TEAMS[fx.a] ? TEAMS[fx.a].flag : '🏳',
+      teamBName: TEAMS[fx.b] ? TEAMS[fx.b].name : fx.b,
+      teamBFlag: TEAMS[fx.b] ? TEAMS[fx.b].flag : '🏳',
+      ist: fx.ist,
+      venue: fx.venue,
+      matchNo: i + 1,
+    });
+  });
+  // Knockout — dates only (matchups depend on results); show round + slot labels
+  const koRounds = [
+    ['Round of 32', R32_FIXTURES, 'r32'],
+    ['Round of 16', R16_FIXTURES, 'r16'],
+    ['Quarter-Final', QF_FIXTURES, 'qf'],
+    ['Semi-Final', SF_FIXTURES, 'sf'],
+    ['Final', FINAL_FIXTURES, 'final'],
+  ];
+  koRounds.forEach(([roundName, fixtures]) => {
+    fixtures.forEach(f => {
+      const ta = getTeamForSlot(f.a);
+      const tb = getTeamForSlot(f.b);
+      list.push({
+        kind: 'knockout',
+        label: roundName,
+        teamAName: ta ? ta.name : slotLabel(f.a),
+        teamAFlag: ta ? ta.flag : '🏳',
+        teamBName: tb ? tb.name : slotLabel(f.b),
+        teamBFlag: tb ? tb.flag : '🏳',
+        ist: f.date + 'T23:30',  // knockout exact times TBC; show date
+        dateOnly: true,
+        venue: f.label,
+      });
+    });
+  });
+  return list;
+}
+
+function renderFixtures() {
+  const container = document.getElementById('fixtures-list');
+  if (!container) return;
+
+  const isFixtureMode = roomMode() === 'fixture';
+  let fixtures = buildAllFixtures();
+
+  if (fixtureFilter === 'group') fixtures = fixtures.filter(f => f.kind === 'group');
+  else if (fixtureFilter === 'knockout') fixtures = fixtures.filter(f => f.kind === 'knockout');
+  else if (fixtureFilter === 'today') {
+    const now = new Date();
+    fixtures = fixtures.filter(f => new Date(f.ist + ':00Z') >= new Date(now.getTime() - 3 * 3600 * 1000));
+  }
+
+  fixtures.sort((a, b) => a.ist < b.ist ? -1 : a.ist > b.ist ? 1 : 0);
+
+  if (!fixtures.length) {
+    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);">No fixtures to show.</div>`;
+    return;
+  }
+
+  // Banner explaining Fixture Mode + save button
+  let banner = '';
+  if (isFixtureMode) {
+    banner = `<div class="deadline-banner" style="justify-content:space-between;">
+      <span>⚽ Fixture Mode: predict each scoreline. Exact = ${FIXTURE_EXACT_PTS} pts · correct outcome = ${FIXTURE_OUTCOME_PTS} pt.</span>
+      <button class="btn-sm btn-primary" onclick="saveFixturePredictions()">Save Predictions</button>
+    </div>`;
+  }
+
+  let html = banner;
+  let lastDay = '';
+  const results = (state.room && state.room.results) || {};
+  const now = nowInstant();
+
+  fixtures.forEach(f => {
+    const t = fmtIST(f.ist);
+    const dayLabel = t.day + ', ' + t.date;
+    // Lock state for this fixture's matchday (Fixture Mode, group stage only).
+    const lock = (isFixtureMode && f.kind === 'group')
+      ? fixtureLockState(f, now)
+      : { locked: false, reason: 'open' };
+    if (dayLabel !== lastDay) {
+      let badge = '';
+      if (isFixtureMode && f.kind === 'group') {
+        if (lock.reason === 'upcoming') {
+          badge = `<span class="fx-md-lock">🔒 unlocks ${unlockLabel(lock.opensAt)}</span>`;
+        } else if (lock.reason === 'closed') {
+          badge = `<span class="fx-md-lock">🔒 locked</span>`;
+        } else {
+          badge = `<span class="fx-md-open">🟢 open</span>`;
+        }
+      }
+      html += `<div class="fx-day-header">${dayLabel}${badge}</div>`;
+      lastDay = dayLabel;
+    }
+    const timeBlock = f.dateOnly
+      ? `<div class="fx-time"><div class="t">TBC</div><div class="d">time</div></div>`
+      : `<div class="fx-time"><div class="t">${t.time.replace(' IST','')}</div><div class="d">IST</div></div>`;
+
+    // Fixture Mode: group matches get editable score inputs (or show result if entered)
+    if (isFixtureMode && f.kind === 'group') {
+      const pred = state.fixturePreds[f.gmId] || {};
+      const res = results['fx_' + f.gmId]; // official match result, if entered
+      const pa = pred.scoreA ?? '';
+      const pb = pred.scoreB ?? '';
+      let resultLine = '';
+      if (res) {
+        const pts = fixturePoints(pred, res);
+        resultLine = `<div class="fx-result">Result ${res.scoreA}–${res.scoreB} · you scored <b>${pts}</b> pt${pts===1?'':'s'}</div>`;
+      } else if (lock.locked) {
+        resultLine = lock.reason === 'upcoming'
+          ? `<div class="fx-lock-note">🔒 Opens ${unlockLabel(lock.opensAt)} (2 days before kickoff)</div>`
+          : `<div class="fx-lock-note">🔒 Predictions locked — matchday has kicked off</div>`;
+      }
+      // Disable inputs if the result is in OR the matchday is locked.
+      const disabled = (res || lock.locked) ? 'disabled' : '';
+      html += `
+        <div class="fx-row ${res ? 'done' : ''} ${lock.locked && !res ? 'locked' : ''}">
+          ${timeBlock}
+          <div class="fx-teams">
+            <div class="fx-team"><span class="flag">${f.teamAFlag}</span> ${f.teamAName}</div>
+            <div class="fx-team"><span class="flag">${f.teamBFlag}</span> ${f.teamBName}</div>
+            ${resultLine}
+          </div>
+          <div class="fx-predict">
+            <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-a"
+              value="${pa}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
+            <span class="fx-dash">–</span>
+            <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-b"
+              value="${pb}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <div class="fx-row">
+          ${timeBlock}
+          <div class="fx-teams">
+            <div class="fx-team"><span class="flag">${f.teamAFlag}</span> ${f.teamAName}</div>
+            <div class="fx-team"><span class="flag">${f.teamBFlag}</span> ${f.teamBName}</div>
+          </div>
+          <div class="fx-meta">
+            <div class="fx-grp-badge">${f.label}</div>
+            <div style="margin-top:4px;">${f.venue}</div>
+          </div>
+        </div>`;
+    }
+  });
+  container.innerHTML = html;
+}
+
+// Live-capture a fixture score input into state (without full save)
+function onFixtureInput(gmId) {
+  if (!state.fixturePreds) state.fixturePreds = {};
+  // Refuse edits to a locked matchday (defense-in-depth beyond disabled inputs).
+  const idx = parseInt(gmId.split('_')[1], 10);
+  const fx = GROUP_FIXTURES[idx];
+  if (fx) {
+    const lock = fixtureLockState({ ist: fx.ist, kind: 'group' });
+    const res = state.room && state.room.results && state.room.results['fx_' + gmId];
+    if (lock.locked && !res) {
+      toast(lock.reason === 'upcoming'
+        ? `This matchday opens ${unlockLabel(lock.opensAt)} (2 days before kickoff).`
+        : 'This matchday is locked — kickoff has passed.', 'info');
+      renderFixtures(); // restore disabled state / clear stray input
+      return;
+    }
+  }
+  const a = document.getElementById('fx-' + gmId + '-a').value;
+  const b = document.getElementById('fx-' + gmId + '-b').value;
+  const entry = {};
+  if (a !== '') entry.scoreA = parseInt(a);
+  if (b !== '') entry.scoreB = parseInt(b);
+  if (entry.scoreA === undefined && entry.scoreB === undefined) {
+    delete state.fixturePreds[gmId];
+  } else {
+    state.fixturePreds[gmId] = entry;
+  }
+  saveState();
+}
+
+// Points for one fixture prediction vs an official result (exact=3, outcome=1)
+function fixturePoints(pred, res) {
+  if (!pred || pred.scoreA === undefined || pred.scoreB === undefined) return 0;
+  if (!res || res.scoreA === undefined || res.scoreB === undefined) return 0;
+  if (pred.scoreA === res.scoreA && pred.scoreB === res.scoreB) return FIXTURE_EXACT_PTS;
+  const sign = x => x > 0 ? 1 : x < 0 ? -1 : 0;
+  if (sign(pred.scoreA - pred.scoreB) === sign(res.scoreA - res.scoreB)) return FIXTURE_OUTCOME_PTS;
+  return 0;
+}
+
+async function saveFixturePredictions() {
+  if (!state.room || !state.user) { toast('Join or create a room first!'); return; }
+  const room = await getRoom(state.room.code);
+  if (!room) return;
+  if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
+  // Persist only predictions for currently-editable (open) matchdays, so a
+  // locked matchday can never be written via a stale or tampered payload.
+  const clean = {};
+  Object.keys(state.fixturePreds || {}).forEach(gmId => {
+    const idx = parseInt(gmId.split('_')[1], 10);
+    const fx = GROUP_FIXTURES[idx];
+    const res = room.results && room.results['fx_' + gmId];
+    if (!fx) { clean[gmId] = state.fixturePreds[gmId]; return; }
+    const lock = fixtureLockState({ ist: fx.ist, kind: 'group' });
+    // Keep if matchday is open, or if a result already exists (historical pred).
+    if (!lock.locked || res) clean[gmId] = state.fixturePreds[gmId];
+  });
+  state.fixturePreds = clean;
+  room.predictions[state.user.id].fixtures = clean;
+  state.room = room;
+  await putRoom(room);
+  toast('Fixture predictions saved!', 'success');
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'score-modal') populateResultModal();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ============================================================
+// ROOM MANAGEMENT
+// ============================================================
+
+function generateCode(len=6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:len}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+async function createRoom() {
+  const name = document.getElementById('create-room-name').value.trim();
+  const userName = document.getElementById('create-user-name').value.trim();
+  if (!name || !userName) { toast('Please fill in all fields'); return; }
+
+  const modeEl = document.querySelector('input[name="game-mode"]:checked');
+  const mode = modeEl ? modeEl.value : 'bracket';
+
+  const code = generateCode();
+  const userId = generateCode(8);
+  const roomData = {
+    id: generateCode(8),
+    name,
+    code,
+    mode,
+    members: [{ id: userId, name: userName, color: randomColor() }],
+    predictions: {},
+    results: {},
+    createdAt: Date.now(),
+  };
+  await putRoom(roomData);
+
+  state.room = roomData;
+  state.user = { id: userId, name: userName };
+  state.groupPreds = {};
+  state.knockoutPreds = {};
+  state.fixturePreds = {};
+  saveState();
+  subscribeToRoom(code);
+
+  closeModal('create-modal');
+  updateNavUser();
+  showRoomInfo();
+  toast(`Room "${name}" created! Share code: ${code}`, 'success');
+  showPage(roomMode() === 'fixture' ? 'fixtures' : 'groups');
+}
+
+async function joinRoom() {
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const userName = document.getElementById('join-user-name').value.trim();
+  if (!code || !userName) { toast('Please fill in all fields'); return; }
+  
+  const roomData = await getRoom(code);
+  if (!roomData) { toast('Room not found. Check the invite code.'); return; }
+  
+  const userId = generateCode(8);
+  const member = { id: userId, name: userName, color: randomColor() };
+  roomData.members.push(member);
+  await putRoom(roomData);
+  
+  state.room = roomData;
+  state.user = { id: userId, name: userName };
+  state.groupPreds = {};
+  state.knockoutPreds = {};
+  state.fixturePreds = {};
+  saveState();
+  subscribeToRoom(code);
+  
+  closeModal('join-modal');
+  updateNavUser();
+  showRoomInfo();
+  toast(`Joined "${roomData.name}"!`, 'success');
+  showPage(roomMode() === 'fixture' ? 'fixtures' : 'groups');
+}
+
+function showRoomInfo() {
+  if (!state.room) return;
+  document.getElementById('active-room-info').style.display = 'block';
+  document.getElementById('welcome-hint').style.display = 'none';
+  document.getElementById('room-display-name').textContent = state.room.name;
+  document.getElementById('room-display-code').textContent = state.room.code;
+  document.getElementById('room-member-count').textContent = state.room.members ? state.room.members.length : '?';
+}
+
+function copyInviteCode() {
+  if (!state.room) return;
+  navigator.clipboard.writeText(state.room.code).then(() => toast('Code copied!', 'success'));
+}
+
+function restoreSession() {
+  if (state.room && state.user) {
+    showRoomInfo();
+    updateNavUser();
+    toast('Session restored!', 'success');
+  } else {
+    toast('No saved session found.');
+  }
+}
+
+function updateNavUser() {
+  if (!state.user) return;
+  const area = document.getElementById('nav-user-area');
+  const initials = state.user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  area.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);">${state.room ? state.room.name : ''}</div>
+    <div class="avatar" title="${state.user.name}">${initials}</div>
+  `;
+  applyModeUI();
+}
+
+// Show/hide tabs based on the room's game mode.
+// Fixture Mode: predictions happen on the Fixtures tab, so the Groups
+// (qualifier-picking) tab is hidden.
+function applyModeUI() {
+  const fixture = roomMode() === 'fixture';
+  const groupsTab = document.getElementById('tab-groups');
+  const mGroups = document.querySelector('[onclick="showPage(\'groups\');toggleMobileMenu()"]');
+  if (groupsTab) groupsTab.style.display = fixture ? 'none' : '';
+  if (mGroups) mGroups.style.display = fixture ? 'none' : '';
+}
+
+function randomColor() {
+  const colors = ['#f5a623','#3b82f6','#22c55e','#ec4899','#a855f7','#14b8a6','#f97316','#06b6d4'];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+
+// Route the "Start Predicting" CTA to the right surface for the room's mode.
+function startPredicting() {
+  showPage(roomMode() === 'fixture' ? 'fixtures' : 'groups');
+}
+
+// ============================================================
+// GROUPS
+// ============================================================
+
+function renderGroups() {
+  const grid = document.getElementById('groups-grid');
+  grid.innerHTML = '';
+  let done = 0;
+
+  if (!state.thirdPlace) state.thirdPlace = [];
+
+  Object.entries(GROUPS).forEach(([letter, teamKeys]) => {
+    const pred = state.groupPreds[letter] || {};
+    const card = document.createElement('div');
+    card.className = 'group-card';
+
+    const teams = teamKeys.map(k => TEAMS[k]).filter(Boolean);
+    const teamsHTML = teams.map((t, i) => {
+      const key = teamKeys[i];
+      const is1st = pred.first === key;
+      const is2nd = pred.second === key;
+      const is3rd = state.thirdPlace.includes(key);
+      return `
+        <div class="team-row">
+          <span class="team-flag flag">${t.flag}</span>
+          <span class="team-name">${t.name}</span>
+          <div class="team-qualify">
+            <button class="qualify-btn ${is1st ? 'selected-1st' : ''}"
+              onclick="setGroupPred('${letter}','${key}','first')" title="1st place">1</button>
+            <button class="qualify-btn ${is2nd ? 'selected-2nd' : ''}"
+              onclick="setGroupPred('${letter}','${key}','second')" title="2nd place">2</button>
+            <button class="qualify-btn ${is3rd ? 'selected-3rd' : ''}"
+              onclick="toggleThirdPlace('${key}')" title="best 3rd place (pick up to 8)">3</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    const isDone = pred.first && pred.second;
+    if (isDone) done++;
+
+    card.innerHTML = `
+      <div class="group-header">
+        <span class="group-letter">Group ${letter}</span>
+        <span>${isDone ? '✅ Done' : `${[pred.first?1:0, pred.second?1:0].reduce((a,b)=>a+b,0)}/2 picks`}</span>
+      </div>
+      <div class="group-dates">📅 ${GROUP_DATES[letter] || ''}</div>
+      ${teamsHTML}`;
+    grid.appendChild(card);
+  });
+
+  document.getElementById('groups-progress').textContent = `${done}/12 groups done`;
+  const tpEl = document.getElementById('thirdplace-count');
+  if (tpEl) tpEl.textContent = `${state.thirdPlace.length}/${MAX_THIRD} third-place picks`;
+}
+
+function toggleThirdPlace(key) {
+  if (!state.thirdPlace) state.thirdPlace = [];
+  const i = state.thirdPlace.indexOf(key);
+  if (i !== -1) {
+    state.thirdPlace.splice(i, 1);
+  } else {
+    if (state.thirdPlace.length >= MAX_THIRD) {
+      toast(`You can pick only ${MAX_THIRD} third-place teams. Deselect one first.`);
+      return;
+    }
+    state.thirdPlace.push(key);
+  }
+  saveState();
+  renderGroups();
+  renderKnockout();
+}
+
+function setGroupPred(group, teamKey, position) {
+  if (!state.groupPreds[group]) state.groupPreds[group] = {};
+  const pred = state.groupPreds[group];
+  const other = position === 'first' ? 'second' : 'first';
+  
+  // Toggle off
+  if (pred[position] === teamKey) {
+    pred[position] = null;
+  } else {
+    // If this team is already in other slot, clear it
+    if (pred[other] === teamKey) pred[other] = null;
+    pred[position] = teamKey;
+  }
+  
+  saveState();
+  renderGroups();
+}
+
+async function saveGroupPredictions() {
+  if (!state.room || !state.user) { toast('Join or create a room first!'); return; }
+  
+  const room = await getRoom(state.room.code);
+  if (!room) return;
+  if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
+  room.predictions[state.user.id].groups = state.groupPreds;
+  room.predictions[state.user.id].thirdPlace = state.thirdPlace;
+  state.room = room;
+  await putRoom(room);
+  
+  toast('Group predictions saved!', 'success');
+}
+
+// ============================================================
+// KNOCKOUT
+// ============================================================
+
+let currentMatchEdit = null;
+
+// Assign each chosen third-place team to exactly one third-place slot such that
+// the team's group is allowed by that slot. Returns { T1: teamKey, ... }.
+// Uses backtracking; the problem is tiny (≤8 teams, 8 slots).
+let _thirdCache = { key: null, result: {} };
+function resolveThirdPlaceAssignment() {
+  const chosen = (state.thirdPlace || []).slice(0, MAX_THIRD);
+  const cacheKey = chosen.join(',');
+  if (_thirdCache.key === cacheKey) return _thirdCache.result;
+
+  // Candidate slots for each chosen team (slots whose 'from' includes its group)
+  const teams = chosen.map(k => ({
+    key: k,
+    group: TEAMS[k] && TEAMS[k].group,
+  })).filter(t => t.group);
+
+  const slotsOf = t => THIRD_SLOTS.filter(s => s.from.includes(t.group)).map(s => s.slot);
+
+  // Order teams by fewest candidate slots first (most constrained)
+  const order = teams.map((t, i) => ({ ...t, n: slotsOf(t).length, i }))
+                     .sort((a, b) => a.n - b.n);
+
+  const used = {};        // slot -> teamKey
+  const assignment = {};  // teamKey -> slot
+
+  function bt(idx) {
+    if (idx >= order.length) return true;
+    const t = order[idx];
+    for (const slot of slotsOf(t)) {
+      if (!used[slot]) {
+        used[slot] = t.key;
+        assignment[t.key] = slot;
+        if (bt(idx + 1)) return true;
+        delete used[slot];
+        delete assignment[t.key];
+      }
+    }
+    return false;
+  }
+  bt(0);
+
+  // Build slot -> teamKey map
+  const result = {};
+  Object.entries(assignment).forEach(([key, slot]) => { result[slot] = key; });
+  _thirdCache = { key: cacheKey, result };
+  return result;
+}
+
+function getTeamForSlot(slot) {
+  // Winner of a previous knockout match
+  if (slot.startsWith('W-')) {
+    const matchId = slot.slice(2);
+    const pred = state.knockoutPreds[matchId];
+    if (pred && pred.winner) {
+      const t = TEAMS[pred.winner];
+      return t ? { key: pred.winner, ...t } : null;
+    }
+    return null;
+  }
+  // Third-place slot, e.g. "3-T1" — resolved from a global assignment that
+  // places each chosen third-place team into exactly one slot (no duplicates).
+  if (slot.startsWith('3-')) {
+    const slotId = slot.slice(2); // e.g. 'T1'
+    const assignment = resolveThirdPlaceAssignment();
+    const key = assignment[slotId];
+    if (key) {
+      const t = TEAMS[key];
+      return t ? { key, ...t } : null;
+    }
+    return null;
+  }
+  // Group winner "1X" or runner-up "2X"
+  if ((slot[0] === '1' || slot[0] === '2') && slot.length === 2) {
+    const pos = slot[0] === '1' ? 'first' : 'second';
+    const group = slot[1];
+    const pred = state.groupPreds[group];
+    if (pred && pred[pos]) {
+      const t = TEAMS[pred[pos]];
+      return t ? { key: pred[pos], ...t } : null;
+    }
+    return null;
+  }
+  return null;
+}
+
+// Human-readable description of an unresolved slot (for the bracket UI)
+function slotLabel(slot) {
+  if (slot.startsWith('W-')) return 'Winner ' + slot.slice(2).toUpperCase().replace('_', ' ');
+  if (slot.startsWith('3-')) return '3rd place';
+  if (slot[0] === '1') return 'Winner Grp ' + slot[1];
+  if (slot[0] === '2') return 'Runner-up Grp ' + slot[1];
+  return slot;
+}
+
+function renderBracketSection(fixtures, containerId, roundKey) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  const locked = roundKey ? isRoundLocked(roundKey) : false;
+
+  const round = document.createElement('div');
+  round.className = 'bracket-round';
+  const header = locked
+    ? `🔒 Locked — enter results for the previous round to unlock`
+    : `Predictions`;
+  round.innerHTML = `<div class="bracket-round-header">${header}</div><div class="bracket-matches"></div>`;
+
+  fixtures.forEach(fixture => {
+    const pred = state.knockoutPreds[fixture.id] || {};
+    const teamA = getTeamForSlot(fixture.a);
+    const teamB = getTeamForSlot(fixture.b);
+    const winner = pred.winner;
+
+    const teamAClass = winner === (teamA && teamA.key) ? 'match-team winner' :
+                       !teamA ? 'match-team tbd' : 'match-team';
+    const teamBClass = winner === (teamB && teamB.key) ? 'match-team winner' :
+                       !teamB ? 'match-team tbd' : 'match-team';
+
+    const onclick = locked ? '' : `onclick="openMatchModal('${fixture.id}')"`;
+    const matchDiv = document.createElement('div');
+    matchDiv.className = 'bracket-match-wrap';
+    matchDiv.innerHTML = `
+      <div class="bracket-match ${pred.winner ? 'predicted' : ''} ${locked ? 'locked' : ''}" ${onclick}>
+        <div class="match-meta">${fixture.label} · ${fmtMatchDateIST(fixture.date)}</div>
+        <div class="${teamAClass}">
+          <span class="match-flag flag">${teamA ? teamA.flag : '🏳'}</span>
+          <span>${teamA ? teamA.name : slotLabel(fixture.a)}</span>
+          ${pred.scoreA !== undefined ? `<span class="match-score">${pred.scoreA}</span>` : ''}
+        </div>
+        <div class="${teamBClass}">
+          <span class="match-flag flag">${teamB ? teamB.flag : '🏳'}</span>
+          <span>${teamB ? teamB.name : slotLabel(fixture.b)}</span>
+          ${pred.scoreB !== undefined ? `<span class="match-score">${pred.scoreB}</span>` : ''}
+        </div>
+      </div>`;
+
+    round.querySelector('.bracket-matches').appendChild(matchDiv);
+  });
+
+  container.appendChild(round);
+  updateKnockoutProgress();
+}
+
+function renderKnockout() {
+  renderBracketSection(R32_FIXTURES, 'bracket-r32', 'r32');
+  renderBracketSection(R16_FIXTURES, 'bracket-r16', 'r16');
+  renderBracketSection(QF_FIXTURES, 'bracket-qf', 'qf');
+  renderBracketSection(SF_FIXTURES, 'bracket-sf', 'sf');
+  renderBracketSection(FINAL_FIXTURES, 'bracket-final', 'final');
+  updateRoundTabLocks();
+}
+
+// A round is locked until the PREVIOUS round's official results are all entered.
+// The group stage must be fully resolved before R32 unlocks.
+function isRoundLocked(roundKey) {
+  const idx = ROUND_ORDER.indexOf(roundKey);
+  if (idx === -1) return false;
+  const results = (state.room && state.room.results) || {};
+  if (idx === 0) {
+    // R32 unlocks once all 12 group results are recorded
+    const groupResults = Object.keys(results).filter(k => k.startsWith('group_'));
+    return groupResults.length < 12;
+  }
+  // Other rounds unlock once all matches of the previous round have results
+  const prevKey = ROUND_ORDER[idx - 1];
+  const prevFixtures = { r32: R32_FIXTURES, r16: R16_FIXTURES, qf: QF_FIXTURES, sf: SF_FIXTURES, final: FINAL_FIXTURES }[prevKey];
+  return !prevFixtures.every(f => results[f.id] && results[f.id].winner);
+}
+
+function updateRoundTabLocks() {
+  ROUND_ORDER.forEach(rk => {
+    const tab = document.querySelector(`[onclick="showSubTab('${rk}')"]`);
+    if (!tab) return;
+    if (isRoundLocked(rk)) {
+      if (!tab.dataset.baseLabel) tab.dataset.baseLabel = tab.textContent;
+      tab.innerHTML = '🔒 ' + tab.dataset.baseLabel;
+      tab.classList.add('locked-tab');
+    } else {
+      if (tab.dataset.baseLabel) tab.textContent = tab.dataset.baseLabel;
+      tab.classList.remove('locked-tab');
+    }
+  });
+}
+
+function updateKnockoutProgress() {
+  const total = R32_FIXTURES.length + R16_FIXTURES.length + QF_FIXTURES.length + SF_FIXTURES.length + FINAL_FIXTURES.length;
+  const done = Object.keys(state.knockoutPreds).filter(k => state.knockoutPreds[k].winner).length;
+  document.getElementById('knockout-progress').textContent = `${done}/${total} predictions`;
+}
+
+function openMatchModal(matchId) {
+  const allFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
+  const fixture = allFixtures.find(f => f.id === matchId);
+  if (!fixture) return;
+
+  const round = matchId.split('_')[0];
+  if (isRoundLocked(round)) {
+    toast('This round is locked. Enter results for the previous round first.');
+    return;
+  }
+
+  const teamA = getTeamForSlot(fixture.a);
+  const teamB = getTeamForSlot(fixture.b);
+  const pred = state.knockoutPreds[matchId] || {};
+
+  if (!teamA || !teamB) {
+    toast('Both teams must be decided first. Complete your earlier picks (groups, third-place, or prior round).');
+    return;
+  }
+
+  currentMatchEdit = { matchId, fixture, teamA, teamB };
+  
+  document.getElementById('match-modal-title').textContent = fixture.label;
+  document.getElementById('modal-flag-a').textContent = teamA ? teamA.flag : '🏳';
+  document.getElementById('modal-name-a').textContent = teamA ? teamA.name : 'TBD';
+  document.getElementById('modal-flag-b').textContent = teamB ? teamB.flag : '🏳';
+  document.getElementById('modal-name-b').textContent = teamB ? teamB.name : 'TBD';
+  document.getElementById('score-a').value = pred.scoreA ?? 0;
+  document.getElementById('score-b').value = pred.scoreB ?? 0;
+  document.getElementById('match-winner-pts').textContent = `+${ROUND_PTS[round] || 5}`;
+  
+  const btnA = document.getElementById('winner-btn-a');
+  const btnB = document.getElementById('winner-btn-b');
+  btnA.textContent = teamA ? teamA.name : 'Team A wins';
+  btnB.textContent = teamB ? teamB.name : 'Team B wins';
+  btnA.className = 'winner-btn' + (pred.winner === (teamA && teamA.key) ? ' active' : '');
+  btnB.className = 'winner-btn' + (pred.winner === (teamB && teamB.key) ? ' active' : '');
+  
+  openModal('match-modal');
+}
+
+function setWinner(side) {
+  if (!currentMatchEdit) return;
+  const { teamA, teamB } = currentMatchEdit;
+  const btnA = document.getElementById('winner-btn-a');
+  const btnB = document.getElementById('winner-btn-b');
+  
+  btnA.classList.remove('active');
+  btnB.classList.remove('active');
+  
+  if (side === 'a' && teamA) { btnA.classList.add('active'); currentMatchEdit.selectedWinner = teamA.key; }
+  else if (side === 'b' && teamB) { btnB.classList.add('active'); currentMatchEdit.selectedWinner = teamB.key; }
+  else { currentMatchEdit.selectedWinner = null; }
+}
+
+function savePrediction() {
+  if (!currentMatchEdit) return;
+  const { matchId, teamA, teamB } = currentMatchEdit;
+  const scoreA = parseInt(document.getElementById('score-a').value) || 0;
+  const scoreB = parseInt(document.getElementById('score-b').value) || 0;
+  
+  let winner = currentMatchEdit.selectedWinner;
+  if (!winner) {
+    if (scoreA > scoreB && teamA) winner = teamA.key;
+    else if (scoreB > scoreA && teamB) winner = teamB.key;
+  }
+  
+  state.knockoutPreds[matchId] = { 
+    teamA: teamA ? teamA.key : null,
+    teamB: teamB ? teamB.key : null,
+    scoreA, scoreB, winner 
+  };
+  
+  saveState();
+  closeModal('match-modal');
+  renderKnockout();
+  toast('Prediction saved!', 'success');
+}
+
+async function saveKnockoutPredictions() {
+  if (!state.room || !state.user) { toast('Join or create a room first!'); return; }
+  
+  const room = await getRoom(state.room.code);
+  if (!room) return;
+  if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
+  room.predictions[state.user.id].knockout = state.knockoutPreds;
+  room.predictions[state.user.id].groups = state.groupPreds;
+  room.predictions[state.user.id].thirdPlace = state.thirdPlace;
+  state.room = room;
+  await putRoom(room);
+  
+  toast('Bracket saved!', 'success');
+}
+
+// ============================================================
+// LEADERBOARD
+// ============================================================
+
+function computeScores(room) {
+  const scores = {};
+  
+  room.members.forEach(member => {
+    scores[member.id] = { total: 0, groupPts: 0, knockoutPts: 0, correctWinners: 0 };
+  });
+  
+  room.members.forEach(member => {
+    const preds = room.predictions[member.id] || {};
+    const groupPreds = preds.groups || {};
+    const knockoutPreds = preds.knockout || {};
+    const thirdPlace = preds.thirdPlace || [];
+    const fixturePreds = preds.fixtures || {};
+    let s = scores[member.id];
+
+    // Group stage scoring (Bracket Mode: qualifiers + third place)
+    Object.entries(room.results || {}).forEach(([key, result]) => {
+      if (key.startsWith('group_')) {
+        const group = key.replace('group_', '');
+        const userPred = groupPreds[group] || {};
+        if (result.first && userPred.first === result.first) { s.groupPts += 3; s.total += 3; }
+        if (result.second && userPred.second === result.second) { s.groupPts += 3; s.total += 3; }
+        if (result.third && thirdPlace.includes(result.third)) {
+          s.groupPts += THIRD_PLACE_PTS; s.total += THIRD_PLACE_PTS;
+        }
+      }
+    });
+
+    // Fixture Mode scoring: per group-match scoreline (exact=3, outcome=1)
+    Object.entries(room.results || {}).forEach(([key, result]) => {
+      if (!key.startsWith('fx_')) return;
+      const gmId = key.slice(3);
+      const pred = fixturePreds[gmId];
+      const pts = fixturePoints(pred, result);
+      if (pts) { s.groupPts += pts; s.total += pts; }
+    });
+
+    // Knockout scoring
+    Object.entries(room.results || {}).forEach(([matchId, result]) => {
+      if (matchId.startsWith('group_') || matchId.startsWith('fx_')) return;
+      const pred = knockoutPreds[matchId];
+      if (!pred || !result.winner) return;
+
+      const round = matchId.split('_')[0];
+      const pts = ROUND_PTS[round] || 5;
+
+      if (pred.winner === result.winner) {
+        s.knockoutPts += pts;
+        s.total += pts;
+        s.correctWinners++;
+        if (pred.scoreA === result.scoreA && pred.scoreB === result.scoreB) {
+          s.knockoutPts += 3;
+          s.total += 3;
+        }
+      }
+    });
+  });
+  
+  return scores;
+}
+
+function renderLeaderboard() {
+  const room = state.room || null;
+  
+  if (!room) {
+    document.getElementById('leaderboard-body').innerHTML = `
+      <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
+        Join or create a room to see the leaderboard
+      </td></tr>`;
+    document.getElementById('leaderboard-stats').innerHTML = '';
+    return;
+  }
+  
+  const scores = computeScores(room);
+  const sorted = room.members
+    .map(m => ({ ...m, ...scores[m.id] }))
+    .sort((a, b) => b.total - a.total);
+  
+  const maxPts = Math.max(...sorted.map(m => m.total), 1);
+  
+  // Stats
+  document.getElementById('leaderboard-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${room.members.length}</div><div class="stat-label">Players</div></div>
+    <div class="stat-card"><div class="stat-val">${sorted[0] ? sorted[0].total : 0}</div><div class="stat-label">Top Score</div></div>
+    <div class="stat-card"><div class="stat-val">${Object.keys(room.results || {}).length}</div><div class="stat-label">Results In</div></div>
+    <div class="stat-card"><div class="stat-val">${Object.keys(room.predictions[state.user?.id]?.knockout || {}).length}</div><div class="stat-label">Your Picks</div></div>
+  `;
+  
+  // Table
+  const tbody = document.getElementById('leaderboard-body');
+  tbody.innerHTML = sorted.map((m, i) => {
+    const rank = i + 1;
+    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+    const initials = m.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const pct = Math.round((m.total / maxPts) * 100);
+    const isMe = state.user && m.id === state.user.id;
+    
+    return `<tr style="${isMe ? 'background:rgba(245,166,35,0.05);' : ''}">
+      <td><div class="rank-badge ${rankClass}">${rank}</div></td>
+      <td>
+        <div class="player-cell">
+          <div class="player-avatar" style="background:${m.color}22;color:${m.color};">${initials}</div>
+          <div>
+            <div style="font-weight:${isMe?'700':'500'}">${m.name}${isMe?' (you)':''}</div>
+            <div class="score-breakdown">
+              <span>Groups: ${m.groupPts}pts</span>
+              <span>·</span>
+              <span>Knockout: ${m.knockoutPts}pts</span>
+            </div>
+          </div>
+        </div>
+      </td>
+      <td style="text-align:right;font-size:20px;font-weight:800;color:var(--gold);">${m.total}</td>
+      <td>
+        <div style="min-width:80px;">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:11px;color:var(--dim);margin-top:3px;">${m.correctWinners} correct winners</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// RESULTS (admin entering actual scores)
+// ============================================================
+
+function populateResultModal() {
+  const round = document.getElementById('result-round').value;
+  updateResultMatchSelect(round);
+  document.getElementById('result-round').onchange = function() { updateResultMatchSelect(this.value); };
+  // populate group picker
+  const gsel = document.getElementById('result-group');
+  if (gsel) {
+    gsel.innerHTML = Object.keys(GROUPS).map(g => `<option value="${g}">Group ${g}</option>`).join('');
+    gsel.onchange = function() { updateGroupResultTeams(this.value); };
+    updateGroupResultTeams(Object.keys(GROUPS)[0]);
+  }
+  // populate fixture-match picker (all 72 group matches)
+  const fsel = document.getElementById('result-fixture-match');
+  if (fsel) {
+    fsel.innerHTML = GROUP_FIXTURES.map((fx, i) => {
+      const na = TEAMS[fx.a] ? TEAMS[fx.a].name : fx.a;
+      const nb = TEAMS[fx.b] ? TEAMS[fx.b].name : fx.b;
+      return `<option value="gm_${i}">M${i+1}: ${na} vs ${nb}</option>`;
+    }).join('');
+    fsel.onchange = function() { updateFixtureResultLabels(this.value); };
+    updateFixtureResultLabels('gm_0');
+  }
+}
+
+function updateFixtureResultLabels(gmId) {
+  const i = parseInt(gmId.replace('gm_', ''));
+  const fx = GROUP_FIXTURES[i];
+  if (!fx) return;
+  document.getElementById('result-fx-label-a').textContent = TEAMS[fx.a] ? TEAMS[fx.a].name : 'Team A';
+  document.getElementById('result-fx-label-b').textContent = TEAMS[fx.b] ? TEAMS[fx.b].name : 'Team B';
+}
+
+function updateGroupResultTeams(group) {
+  const teamKeys = GROUPS[group] || [];
+  const opts = teamKeys.map(k => `<option value="${k}">${TEAMS[k].name}</option>`).join('');
+  document.getElementById('result-group-first').innerHTML = opts;
+  document.getElementById('result-group-second').innerHTML = opts;
+  document.getElementById('result-group-third').innerHTML =
+    '<option value="">No / not yet known</option>' + opts;
+}
+
+function updateResultMatchSelect(round) {
+  const isGroup = round === 'group';
+  const isFixture = round === 'fixture';
+  document.getElementById('group-result-fields').style.display = isGroup ? 'block' : 'none';
+  document.getElementById('fixture-result-fields').style.display = isFixture ? 'block' : 'none';
+  document.getElementById('ko-result-fields').style.display = (isGroup || isFixture) ? 'none' : 'block';
+  if (isGroup || isFixture) return;
+
+  const map = { r32: R32_FIXTURES, r16: R16_FIXTURES, qf: QF_FIXTURES, sf: SF_FIXTURES, final: FINAL_FIXTURES };
+  const fixtures = map[round] || [];
+  const sel = document.getElementById('result-match');
+  sel.innerHTML = fixtures.map(f => {
+    const ta = getTeamForSlot(f.a);
+    const tb = getTeamForSlot(f.b);
+    const nameA = ta ? ta.name : f.a;
+    const nameB = tb ? tb.name : f.b;
+    return `<option value="${f.id}">${nameA} vs ${nameB}</option>`;
+  }).join('');
+  
+  sel.onchange = function() { updateResultTeamLabels(this.value); };
+  if (fixtures.length) updateResultTeamLabels(fixtures[0].id);
+}
+
+function updateResultTeamLabels(matchId) {
+  const allFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
+  const fixture = allFixtures.find(f => f.id === matchId);
+  if (!fixture) return;
+  const ta = getTeamForSlot(fixture.a);
+  const tb = getTeamForSlot(fixture.b);
+  document.getElementById('result-label-a').textContent = ta ? ta.name : 'Team A';
+  document.getElementById('result-label-b').textContent = tb ? tb.name : 'Team B';
+  document.getElementById('result-winner-a').textContent = (ta ? ta.name : 'Team A') + ' wins (ET/Pens)';
+  document.getElementById('result-winner-b').textContent = (tb ? tb.name : 'Team B') + ' wins (ET/Pens)';
+}
+
+async function submitResult() {
+  if (!state.room || !state.user) { toast('You must be in a room to submit results'); return; }
+
+  const round = document.getElementById('result-round').value;
+  const room = await getRoom(state.room.code);
+  if (!room) return;
+  if (!room.results) room.results = {};
+
+  if (round === 'group') {
+    const group = document.getElementById('result-group').value;
+    const first = document.getElementById('result-group-first').value;
+    const second = document.getElementById('result-group-second').value;
+    const third = document.getElementById('result-group-third').value;
+    if (first && second && first === second) {
+      toast('1st and 2nd place must be different teams.');
+      return;
+    }
+    room.results['group_' + group] = { first, second, third: third || null, timestamp: Date.now() };
+    state.room = room;
+    await putRoom(room);
+    closeModal('score-modal');
+    renderLeaderboard();
+    renderKnockout();
+    const n = Object.keys(room.results).filter(k => k.startsWith('group_')).length;
+    toast(`Group ${group} recorded (${n}/12 groups). Scores updated.`, 'success');
+    return;
+  }
+
+  if (round === 'fixture') {
+    const gmId = document.getElementById('result-fixture-match').value;
+    const sa = parseInt(document.getElementById('result-fx-score-a').value) || 0;
+    const sb = parseInt(document.getElementById('result-fx-score-b').value) || 0;
+    room.results['fx_' + gmId] = { scoreA: sa, scoreB: sb, timestamp: Date.now() };
+    state.room = room;
+    await putRoom(room);
+    closeModal('score-modal');
+    renderLeaderboard();
+    renderFixtures();
+    const n = Object.keys(room.results).filter(k => k.startsWith('fx_')).length;
+    toast(`Match result recorded (${n}/72 group matches). Scores updated.`, 'success');
+    return;
+  }
+
+  const matchId = document.getElementById('result-match').value;
+  const scoreA = parseInt(document.getElementById('result-score-a').value) || 0;
+  const scoreB = parseInt(document.getElementById('result-score-b').value) || 0;
+  const winnerSide = document.getElementById('result-winner').value;
+
+  const allFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
+  const fixture = allFixtures.find(f => f.id === matchId);
+  if (!fixture) return;
+
+  const ta = getTeamForSlot(fixture.a);
+  const tb = getTeamForSlot(fixture.b);
+
+  let winner = null;
+  if (winnerSide === 'a' && ta) winner = ta.key;
+  else if (winnerSide === 'b' && tb) winner = tb.key;
+  else if (scoreA > scoreB && ta) winner = ta.key;
+  else if (scoreB > scoreA && tb) winner = tb.key;
+
+  room.results[matchId] = { scoreA, scoreB, winner, timestamp: Date.now() };
+  state.room = room;
+  await putRoom(room);
+
+  closeModal('score-modal');
+  renderLeaderboard();
+  renderKnockout();
+  toast('Result recorded! Scores updated.', 'success');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+
+function toast(msg, type='info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icon = type === 'success' ? '✅' : 'ℹ️';
+  el.innerHTML = `<span class="toast-icon">${icon}</span> ${msg}`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function toggleMobileMenu() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+function showFatalError(msg) {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#ef4444;color:#fff;padding:12px 16px;font-size:13px;font-family:system-ui;';
+  banner.textContent = 'App error: ' + msg + ' — please screenshot and report.';
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
+window.addEventListener('error', function(e) {
+  showFatalError(e.message + ' (line ' + e.lineno + ')');
+});
+
+async function init() {
+  loadState();
+
+  // 1) Render everything IMMEDIATELY from local state.
+  //    Never await network before the UI is on screen — a slow or failed
+  //    cloud request must not be able to freeze the page.
+  if (state.user && state.room) {
+    updateNavUser();
+    showRoomInfo();
+    const myPreds = state.room.predictions && state.room.predictions[state.user.id];
+    if (myPreds) {
+      if (myPreds.groups) state.groupPreds = myPreds.groups;
+      if (myPreds.thirdPlace) state.thirdPlace = myPreds.thirdPlace;
+      if (myPreds.knockout) state.knockoutPreds = myPreds.knockout;
+      if (myPreds.fixtures) state.fixturePreds = myPreds.fixtures;
+    }
+  }
+  renderGroups();
+  renderKnockout();
+  renderLeaderboard();
+
+  const statusEl = document.getElementById('sync-status');
+  if (statusEl) {
+    if (useCloud) {
+      statusEl.innerHTML = '🟢 Cloud sync enabled — shared across all devices';
+    } else if (IS_SANDBOX && SUPABASE_URL) {
+      statusEl.innerHTML = '🔵 Preview mode — cloud sync is paused in this preview. It will work once deployed to your live URL.';
+    } else {
+      statusEl.innerHTML = '🟡 Local mode — set up Supabase for cross-device sync (see top of code)';
+    }
+  }
+  if (useCloud) {
+    toast('Cloud sync is on — predictions & results update live across devices.', 'success');
+  } else if (IS_SANDBOX && SUPABASE_URL) {
+    toast('Preview mode: cloud sync is paused here but will work on your deployed site.', 'info');
+  } else if (!storageWorks) {
+    toast('Heads up: storage is blocked here, so data won\'t persist after closing. Deploy the file to a URL for full functionality.', 'info');
+  }
+
+  // 2) THEN refresh from cloud in the background (non-blocking).
+  if (useCloud && state.user && state.room) {
+    refreshRoomFromCloud(state.room.code);
+  }
+
+  // 3) Sync a trusted clock in the background so matchday locks can't be
+  //    bypassed by changing the device clock. Re-render fixtures once it lands.
+  if (useCloud) {
+    syncServerClock().then(() => {
+      if (roomMode() === 'fixture') renderFixtures();
+    });
+  }
+}
+
+// Background cloud refresh — failures or slowness are swallowed and never
+// affect the already-rendered UI.
+async function refreshRoomFromCloud(code) {
+  try {
+    subscribeToRoom(code);
+    const fresh = await getRoom(code);
+    if (fresh) {
+      state.room = fresh;
+      saveRoomLocal(fresh);
+      const myPreds = fresh.predictions && fresh.predictions[state.user.id];
+      if (myPreds) {
+        if (myPreds.groups) state.groupPreds = myPreds.groups;
+      if (myPreds.thirdPlace) state.thirdPlace = myPreds.thirdPlace;
+        if (myPreds.knockout) state.knockoutPreds = myPreds.knockout;
+      if (myPreds.fixtures) state.fixturePreds = myPreds.fixtures;
+      }
+      showRoomInfo();
+      renderGroups();
+      renderKnockout();
+      renderLeaderboard();
+    }
+  } catch (e) {
+    console.error('Background cloud refresh failed (using local data):', e);
+  }
+}
+
+try {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+} catch (e) {
+  showFatalError(e.message);
+}
+</script>
+</body>
+</html>

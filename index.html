@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FIFA World Cup 2026 · Bracket Predictor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 <style>
   :root {
     --bg: #0a0f1e;
@@ -123,6 +124,17 @@
   .fx-score-in:focus { border-color: var(--gold); }
   .fx-score-in:disabled { opacity: 0.7; }
   .fx-dash { color: var(--muted); font-weight: 700; }
+  /* FotMob-style horizontal prediction card */
+  .fx-row-vs { flex-wrap: wrap; }
+  .fx-vs { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .fx-side { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; }
+  .fx-side .flag { font-size: 20px; flex-shrink: 0; }
+  .fx-side-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fx-side-home { justify-content: flex-end; text-align: right; }
+  .fx-side-away { justify-content: flex-start; text-align: left; }
+  .fx-colon { color: var(--muted); font-weight: 700; font-size: 16px; }
+  .fx-vs-foot { flex-basis: 100%; text-align: center; margin-top: 6px; }
+  .fx-vs-foot .fx-result, .fx-vs-foot .fx-lock-note { margin-top: 0; }
   .fx-result { font-size: 11px; color: var(--gold); margin-top: 2px; }
   .fx-lock-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .fx-row.locked { opacity: 0.55; }
@@ -132,7 +144,16 @@
   .fx-score { font-weight: 700; color: var(--gold); font-size: 14px; min-width: 16px; text-align: center; }
   @media (max-width: 600px) {
     .fx-meta { display: none; }
-    .fx-time { min-width: 80px; }
+    .fx-time { min-width: 70px; }
+    .fx-side { font-size: 13px; gap: 6px; }
+    .fx-side .flag { font-size: 17px; }
+    .fx-vs { gap: 6px; }
+    .fx-score-in { width: 34px; height: 36px; font-size: 15px; }
+    /* On narrow screens, lift the time to its own line so the matchup
+       gets the full card width and team names stay readable. */
+    .fx-row-vs .fx-time { flex-basis: 100%; min-width: 0; display: flex; gap: 6px; align-items: baseline; margin-bottom: 2px; }
+    .fx-row-vs .fx-time .d { font-size: 10px; }
+    .fx-row-vs .fx-vs { flex-basis: 100%; }
   }
 
   /* KNOCKOUT BRACKET */
@@ -220,6 +241,10 @@
 
   /* FLAG emoji fallback helpers */
   .flag { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; }
+  /* flag-icons SVGs scale with font-size (1.333em wide, 1em tall). Align them
+     neatly with adjacent text and round the corners slightly. */
+  .flag.fi { line-height: 1; vertical-align: -0.15em; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+  .flag.flag-unknown { opacity: 0.7; }
   
   .mobile-menu { display: none; }
   .mobile-menu.open { display: flex; position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: var(--surface); z-index: 99; flex-direction: column; padding: 16px; gap: 4px; }
@@ -746,6 +771,33 @@ const TEAMS = {
   'Ghana': { flag: '🇬🇭', name: 'Ghana', group: 'L' },
   'Panama': { flag: '🇵🇦', name: 'Panama', group: 'L' },
 };
+
+// ISO 3166-1 alpha-2 codes for flag-icons SVGs. England/Scotland are not ISO
+// countries, so flag-icons exposes them as gb-eng / gb-sct.
+const FLAG_CODES = {
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Czechia':'cz',
+  'Canada':'ca','Switzerland':'ch','Qatar':'qa','Bosnia':'ba',
+  'Brazil':'br','Morocco':'ma','Haiti':'ht','Scotland':'gb-sct',
+  'USA':'us','Paraguay':'py','Australia':'au','Turkiye':'tr',
+  'Germany':'de','Curacao':'cw','Ivory Coast':'ci','Ecuador':'ec',
+  'Netherlands':'nl','Japan':'jp','Tunisia':'tn','Sweden':'se',
+  'Belgium':'be','Egypt':'eg','Iran':'ir','New Zealand':'nz',
+  'Spain':'es','Cape Verde':'cv','Saudi Arabia':'sa','Uruguay':'uy',
+  'France':'fr','Senegal':'sn','Norway':'no','Iraq':'iq',
+  'Argentina':'ar','Algeria':'dz','Austria':'at','Jordan':'jo',
+  'Portugal':'pt','Uzbekistan':'uz','Colombia':'co','DR Congo':'cd',
+  'England':'gb-eng','Croatia':'hr','Ghana':'gh','Panama':'pa',
+};
+
+// Render a flag as an SVG (flag-icons), keyed by team name/key. Renders
+// identically on every browser, including Firefox/Chrome on Windows where
+// country-flag emoji fall back to letter pairs. Unknown slots get a neutral box.
+function flagHTML(teamKey, extraClass) {
+  const cls = 'flag' + (extraClass ? ' ' + extraClass : '');
+  const code = FLAG_CODES[teamKey];
+  if (!code) return `<span class="${cls} flag-unknown">🏳</span>`;
+  return `<span class="${cls} fi fi-${code}"></span>`;
+}
 
 // Group definitions — official 2026 FIFA World Cup draw
 const GROUPS = {
@@ -1309,9 +1361,9 @@ function buildAllFixtures() {
       label: 'Group ' + fx.grp,
       teamAKey: fx.a, teamBKey: fx.b,
       teamAName: TEAMS[fx.a] ? TEAMS[fx.a].name : fx.a,
-      teamAFlag: TEAMS[fx.a] ? TEAMS[fx.a].flag : '🏳',
+      teamAFlag: flagHTML(fx.a),
       teamBName: TEAMS[fx.b] ? TEAMS[fx.b].name : fx.b,
-      teamBFlag: TEAMS[fx.b] ? TEAMS[fx.b].flag : '🏳',
+      teamBFlag: flagHTML(fx.b),
       ist: fx.ist,
       venue: fx.venue,
       matchNo: i + 1,
@@ -1333,9 +1385,9 @@ function buildAllFixtures() {
         kind: 'knockout',
         label: roundName,
         teamAName: ta ? ta.name : slotLabel(f.a),
-        teamAFlag: ta ? ta.flag : '🏳',
+        teamAFlag: ta ? flagHTML(ta.name) : flagHTML(null),
         teamBName: tb ? tb.name : slotLabel(f.b),
-        teamBFlag: tb ? tb.flag : '🏳',
+        teamBFlag: tb ? flagHTML(tb.name) : flagHTML(null),
         ist: f.date + 'T23:30',  // knockout exact times TBC; show date
         dateOnly: true,
         venue: f.label,
@@ -1422,29 +1474,37 @@ function renderFixtures() {
       }
       // Disable inputs if the result is in OR the matchday is locked.
       const disabled = (res || lock.locked) ? 'disabled' : '';
+      // FotMob-style horizontal card:  Team1 (name+flag, right-aligned)
+      //   [scoreA] : [scoreB]  Team2 (flag+name, left-aligned).
       html += `
-        <div class="fx-row ${res ? 'done' : ''} ${lock.locked && !res ? 'locked' : ''}">
+        <div class="fx-row fx-row-vs ${res ? 'done' : ''} ${lock.locked && !res ? 'locked' : ''}">
           ${timeBlock}
-          <div class="fx-teams">
-            <div class="fx-team"><span class="flag">${f.teamAFlag}</span> ${f.teamAName}</div>
-            <div class="fx-team"><span class="flag">${f.teamBFlag}</span> ${f.teamBName}</div>
-            ${resultLine}
+          <div class="fx-vs">
+            <div class="fx-side fx-side-home">
+              <span class="fx-side-name">${f.teamAName}</span>
+              ${f.teamAFlag}
+            </div>
+            <div class="fx-predict">
+              <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-a"
+                value="${pa}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
+              <span class="fx-colon">:</span>
+              <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-b"
+                value="${pb}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
+            </div>
+            <div class="fx-side fx-side-away">
+              ${f.teamBFlag}
+              <span class="fx-side-name">${f.teamBName}</span>
+            </div>
           </div>
-          <div class="fx-predict">
-            <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-a"
-              value="${pa}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
-            <span class="fx-dash">–</span>
-            <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.gmId}-b"
-              value="${pb}" placeholder="–" ${disabled} oninput="onFixtureInput('${f.gmId}')">
-          </div>
+          ${resultLine ? `<div class="fx-vs-foot">${resultLine}</div>` : ''}
         </div>`;
     } else {
       html += `
         <div class="fx-row">
           ${timeBlock}
           <div class="fx-teams">
-            <div class="fx-team"><span class="flag">${f.teamAFlag}</span> ${f.teamAName}</div>
-            <div class="fx-team"><span class="flag">${f.teamBFlag}</span> ${f.teamBName}</div>
+            <div class="fx-team">${f.teamAFlag} ${f.teamAName}</div>
+            <div class="fx-team">${f.teamBFlag} ${f.teamBName}</div>
           </div>
           <div class="fx-meta">
             <div class="fx-grp-badge">${f.label}</div>
@@ -1688,7 +1748,7 @@ function renderGroups() {
       const is3rd = state.thirdPlace.includes(key);
       return `
         <div class="team-row">
-          <span class="team-flag flag">${t.flag}</span>
+          ${flagHTML(key, 'team-flag')}
           <span class="team-name">${t.name}</span>
           <div class="team-qualify">
             <button class="qualify-btn ${is1st ? 'selected-1st' : ''}"
@@ -1899,12 +1959,12 @@ function renderBracketSection(fixtures, containerId, roundKey) {
       <div class="bracket-match ${pred.winner ? 'predicted' : ''} ${locked ? 'locked' : ''}" ${onclick}>
         <div class="match-meta">${fixture.label} · ${fmtMatchDateIST(fixture.date)}</div>
         <div class="${teamAClass}">
-          <span class="match-flag flag">${teamA ? teamA.flag : '🏳'}</span>
+          ${teamA ? flagHTML(teamA.name, 'match-flag') : flagHTML(null, 'match-flag')}
           <span>${teamA ? teamA.name : slotLabel(fixture.a)}</span>
           ${pred.scoreA !== undefined ? `<span class="match-score">${pred.scoreA}</span>` : ''}
         </div>
         <div class="${teamBClass}">
-          <span class="match-flag flag">${teamB ? teamB.flag : '🏳'}</span>
+          ${teamB ? flagHTML(teamB.name, 'match-flag') : flagHTML(null, 'match-flag')}
           <span>${teamB ? teamB.name : slotLabel(fixture.b)}</span>
           ${pred.scoreB !== undefined ? `<span class="match-score">${pred.scoreB}</span>` : ''}
         </div>
@@ -1987,9 +2047,9 @@ function openMatchModal(matchId) {
   currentMatchEdit = { matchId, fixture, teamA, teamB };
   
   document.getElementById('match-modal-title').textContent = fixture.label;
-  document.getElementById('modal-flag-a').textContent = teamA ? teamA.flag : '🏳';
+  document.getElementById('modal-flag-a').innerHTML = teamA ? flagHTML(teamA.name) : flagHTML(null);
   document.getElementById('modal-name-a').textContent = teamA ? teamA.name : 'TBD';
-  document.getElementById('modal-flag-b').textContent = teamB ? teamB.flag : '🏳';
+  document.getElementById('modal-flag-b').innerHTML = teamB ? flagHTML(teamB.name) : flagHTML(null);
   document.getElementById('modal-name-b').textContent = teamB ? teamB.name : 'TBD';
   document.getElementById('score-a').value = pred.scoreA ?? 0;
   document.getElementById('score-b').value = pred.scoreB ?? 0;

@@ -2942,7 +2942,7 @@ const FD_TEAM_MAP = {
   'Ivory Coast': 'Ivory Coast', 'Ecuador': 'Ecuador',
   'Netherlands': 'Netherlands', 'Japan': 'Japan', 'Tunisia': 'Tunisia', 'Sweden': 'Sweden',
   'Belgium': 'Belgium', 'Egypt': 'Egypt', 'Iran': 'Iran', 'New Zealand': 'New Zealand',
-  'Spain': 'Spain', 'Cabo Verde': 'Cape Verde', 'Cape Verde': 'Cape Verde',
+  'Spain': 'Spain', 'Cabo Verde': 'Cape Verde', 'Cape Verde': 'Cape Verde', 'Cape Verde Islands': 'Cape Verde',
   'Saudi Arabia': 'Saudi Arabia', 'Uruguay': 'Uruguay',
   'France': 'France', 'Senegal': 'Senegal', 'Norway': 'Norway', 'Iraq': 'Iraq',
   'Argentina': 'Argentina', 'Algeria': 'Algeria', 'Austria': 'Austria', 'Jordan': 'Jordan',
@@ -2960,11 +2960,12 @@ const FD_STAGE_MAP = {
   'FINAL': 'final',
 };
 
-// Map API group string "GROUP_A" → letter "A"
+// Map API group string → letter "A". Matches use "GROUP_A" (underscore),
+// standings use "Group A" (space) — handle both, case-insensitively.
 function fdGroupLetter(apiGroup) {
   if (!apiGroup) return null;
-  const m = apiGroup.match(/GROUP_([A-L])/);
-  return m ? m[1] : null;
+  const m = apiGroup.match(/GROUP[_ ]([A-L])/i);
+  return m ? m[1].toUpperCase() : null;
 }
 
 // Resolve our internal team key from an API team name
@@ -2993,6 +2994,16 @@ async function fdFetchAll() {
   return { matches: data.matches || [], standings: data.standings || [] };
 }
 
+// A match is "result-ready" only if it's FINISHED *and* has real scores.
+// The API sometimes flags a match FINISHED slightly before fullTime scores
+// populate (or leaves them null) — writing those would corrupt results.
+function fdMatchHasScore(m) {
+  return m.status === 'FINISHED'
+    && m.score && m.score.fullTime
+    && m.score.fullTime.home !== null && m.score.fullTime.home !== undefined
+    && m.score.fullTime.away !== null && m.score.fullTime.away !== undefined;
+}
+
 // Build the pending-results diff that will be shown in the preview modal.
 // Returns { toWrite: [...], alreadyDone: [...], warnings: [...] }
 async function buildSyncDiff() {
@@ -3006,7 +3017,7 @@ async function buildSyncDiff() {
   const warnings = [];
 
   // ── GROUP STAGE ──────────────────────────────────────────────
-  const groupMatches = apiMatches.filter(m => m.stage === 'GROUP_STAGE' && m.status === 'FINISHED');
+  const groupMatches = apiMatches.filter(m => m.stage === 'GROUP_STAGE' && fdMatchHasScore(m));
 
   if (mode === 'fixture') {
     // Fixture Mode: match each finished group match to our GROUP_FIXTURES by teams
@@ -3067,7 +3078,7 @@ async function buildSyncDiff() {
   }
 
   // ── KNOCKOUT ─────────────────────────────────────────────────
-  const koMatches = apiMatches.filter(m => m.stage !== 'GROUP_STAGE' && m.status === 'FINISHED');
+  const koMatches = apiMatches.filter(m => m.stage !== 'GROUP_STAGE' && fdMatchHasScore(m));
   const allKoFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
 
   koMatches.forEach(m => {

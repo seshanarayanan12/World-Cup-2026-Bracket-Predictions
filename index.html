@@ -465,6 +465,7 @@
       <div class="section-title">Leaderboard</div>
       <div class="section-subtitle">Points update as tournament results come in</div>
     </div>
+    <button class="btn-sm" id="audit-log-btn" style="display:none;" onclick="openAuditLog()">📋 Activity Log</button>
     <button class="btn-sm" id="enter-result-btn" style="display:none;" onclick="openModal('score-modal')">+ Enter Result</button>
   </div>
   <div class="stats-grid" id="leaderboard-stats"></div>
@@ -637,6 +638,31 @@
 </div>
 
 <!-- ENTER RESULT MODAL (admin) -->
+<div class="modal-overlay" id="audit-modal">
+  <div class="modal" style="max-width:680px;">
+    <h2>📋 Activity Log</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+      Prediction changes and result entries, newest first. Forward-only record
+      (started when this feature was deployed), most recent 500 events.
+    </p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <input type="text" id="audit-filter" placeholder="Filter by name / team / item…"
+        oninput="renderAuditLog()" style="flex:1;min-width:160px;">
+      <select id="audit-kind" onchange="renderAuditLog()">
+        <option value="">All types</option>
+        <option value="fixture">Fixtures</option>
+        <option value="group">Group picks</option>
+        <option value="knockout">Knockout</option>
+        <option value="result">Results</option>
+      </select>
+    </div>
+    <div id="audit-list" style="max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="modal-cancel" onclick="closeModal('audit-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="score-modal">
   <div class="modal">
     <h2>📊 Enter Match Result</h2>
@@ -1278,8 +1304,12 @@ async function initAuth() {
     if (prev !== now) {
       updateAuthUI();
       updateNavUser();
-      // If we just signed in while sitting in a room, offer to claim picks.
-      if (now && state.room) maybeOfferClaim();
+      // If we just signed in, offer to claim picks. maybeOfferClaim()
+      // self-guards on state.room, so it's safe to call even if the room
+      // hasn't hydrated yet — and refreshRoomFromCloud re-invokes it once
+      // the room loads (handles the auth-before-room race on magic-link
+      // redirect that otherwise required a second sign-in attempt).
+      if (now) maybeOfferClaim();
     }
   });
   updateAuthUI();
@@ -1341,6 +1371,8 @@ function applyAdminUI() {
   const admin = isAdmin();
   const btn = document.getElementById('enter-result-btn');
   if (btn) btn.style.display = admin ? '' : 'none';
+  const logBtn = document.getElementById('audit-log-btn');
+  if (logBtn) logBtn.style.display = admin ? '' : 'none';
   const dbg = document.getElementById('admin-debug');
   if (dbg) {
     if (state.user) {
@@ -1351,6 +1383,64 @@ function applyAdminUI() {
       dbg.style.display = 'none';
     }
   }
+}
+
+// Open the admin Activity Log modal (admin-gated at the button level).
+function openAuditLog() {
+  if (!isAdmin()) { toast('Admins only.'); return; }
+  openModal('audit-modal');
+  renderAuditLog();
+}
+
+// Render the audit log newest-first, honoring the text + type filters.
+function renderAuditLog() {
+  const listEl = document.getElementById('audit-list');
+  if (!listEl) return;
+  const log = (state.room && Array.isArray(state.room.auditLog)) ? state.room.auditLog : [];
+  const q = (document.getElementById('audit-filter').value || '').trim().toLowerCase();
+  const kind = document.getElementById('audit-kind').value || '';
+  const actionEmoji = { fixture:'⚽', group:'🏆', knockout:'🥊', result:'📊' };
+
+  const rows = log.slice().reverse().filter(e => {
+    if (kind && e.action !== kind) return false;
+    if (!q) return true;
+    return [e.who, e.email, e.item, e.from, e.to, e.action]
+      .filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center;">
+      ${log.length ? 'No entries match your filter.' : 'No activity recorded yet. Changes will appear here as they happen.'}
+    </div>`;
+    return;
+  }
+
+  listEl.innerHTML = rows.map(e => {
+    const d = new Date(e.ts + (5*60+30)*60*1000); // show in IST
+    const when = d.getUTCFullYear() + '-' +
+      String(d.getUTCMonth()+1).padStart(2,'0') + '-' +
+      String(d.getUTCDate()).padStart(2,'0') + ' ' +
+      String(d.getUTCHours()).padStart(2,'0') + ':' +
+      String(d.getUTCMinutes()).padStart(2,'0');
+    const whoLabel = e.email ? `${e.who} (${e.email})` : e.who;
+    const change = (e.from === '—')
+      ? `set <b>${e.to}</b>`
+      : `<b>${e.from}</b> → <b>${e.to}</b>`;
+    return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;">
+        <span>${actionEmoji[e.action]||'•'} <b>${escapeHtml(whoLabel)}</b></span>
+        <span style="color:var(--muted);font-size:11px;white-space:nowrap;">${when} IST</span>
+      </div>
+      <div style="color:var(--muted);margin-top:2px;">${escapeHtml(e.item)} · ${change}</div>
+    </div>`;
+  }).join('');
+}
+
+// Minimal HTML escaper for log values (team names/emails are user-influenced).
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function openAuthModal() {
@@ -1547,6 +1637,85 @@ async function putRoom(roomData) {
 
 // Realtime: re-render leaderboard/room when the current room changes elsewhere
 let roomChannel = null;
+
+// ============================================================
+// AUDIT LOG (admin-visible activity trail)
+// Records prediction changes and result entries into room.auditLog with
+// who / what / when. Forward-only (starts when deployed), per-save
+// granularity, capped at AUDIT_LOG_MAX (rolling trim). Stored in the room
+// JSON — no schema change. NOT tamper-proof (client-written); it's an
+// honest-activity record, not a security audit.
+// ============================================================
+
+const AUDIT_LOG_MAX = 500;
+
+function fmtScorePred(p) {
+  if (!p || p.scoreA == null || p.scoreB == null) return '—';
+  return p.scoreA + '-' + p.scoreB;
+}
+
+// Diff fixture-prediction maps ({gmId:{scoreA,scoreB}}) → [{item,from,to}].
+function diffFixturePreds(oldP, newP) {
+  const out = [];
+  const keys = new Set([...Object.keys(oldP || {}), ...Object.keys(newP || {})]);
+  keys.forEach(gmId => {
+    const a = fmtScorePred((oldP || {})[gmId]);
+    const b = fmtScorePred((newP || {})[gmId]);
+    if (a !== b) {
+      const idx = parseInt(gmId.split('_')[1], 10);
+      const fx = GROUP_FIXTURES[idx];
+      out.push({ item: fx ? `${fx.a} v ${fx.b}` : gmId, from: a, to: b });
+    }
+  });
+  return out;
+}
+
+// Diff group-pick maps ({Letter:{first,second}}) + thirdPlace array.
+function diffGroupPreds(oldG, newG, oldThird, newThird) {
+  const out = [];
+  const keys = new Set([...Object.keys(oldG || {}), ...Object.keys(newG || {})]);
+  keys.forEach(letter => {
+    const a = (oldG || {})[letter] || {};
+    const b = (newG || {})[letter] || {};
+    if ((a.first || '—') !== (b.first || '—'))
+      out.push({ item: `Group ${letter} 1st`, from: a.first || '—', to: b.first || '—' });
+    if ((a.second || '—') !== (b.second || '—'))
+      out.push({ item: `Group ${letter} 2nd`, from: a.second || '—', to: b.second || '—' });
+  });
+  const oT = (oldThird || []).slice().sort().join(',');
+  const nT = (newThird || []).slice().sort().join(',');
+  if (oT !== nT) out.push({ item: '3rd-place picks', from: oT || '—', to: nT || '—' });
+  return out;
+}
+
+// Diff knockout-pred maps ({matchId:{winner,...}}).
+function diffKnockoutPreds(oldK, newK) {
+  const out = [];
+  const keys = new Set([...Object.keys(oldK || {}), ...Object.keys(newK || {})]);
+  keys.forEach(mId => {
+    const af = ((oldK || {})[mId] || {}).winner || '—';
+    const bf = ((newK || {})[mId] || {}).winner || '—';
+    if (af !== bf) out.push({ item: `KO ${mId} winner`, from: af, to: bf });
+  });
+  return out;
+}
+
+// Append entries to room.auditLog (creating if absent) and rolling-trim.
+function appendAuditLog(room, action, entries) {
+  if (!entries || !entries.length) return;
+  if (!Array.isArray(room.auditLog)) room.auditLog = [];
+  const who = state.user ? state.user.name : 'unknown';
+  const whoId = state.user ? state.user.id : '';
+  const email = (isSignedIn() && authUser.email) ? authUser.email : '';
+  const ts = nowInstant();
+  entries.forEach(e => {
+    room.auditLog.push({ ts, action, who, whoId, email, item: e.item, from: e.from, to: e.to });
+  });
+  if (room.auditLog.length > AUDIT_LOG_MAX) {
+    room.auditLog = room.auditLog.slice(room.auditLog.length - AUDIT_LOG_MAX);
+  }
+}
+
 function subscribeToRoom(code) {
   if (!useCloud || !code) return;
   if (roomChannel) { sbClient.removeChannel(roomChannel); roomChannel = null; }
@@ -1835,6 +2004,8 @@ async function saveFixturePredictions() {
     if (!lock.locked || res) clean[gmId] = state.fixturePreds[gmId];
   });
   state.fixturePreds = clean;
+  const prevFix = (room.predictions[state.user.id].fixtures) || {};
+  appendAuditLog(room, 'fixture', diffFixturePreds(prevFix, clean));
   room.predictions[state.user.id].fixtures = clean;
   state.room = room;
   await putRoom(room);
@@ -2108,6 +2279,9 @@ async function saveGroupPredictions() {
   const room = await getRoom(state.room.code);
   if (!room) return;
   if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
+  const prevG = room.predictions[state.user.id].groups || {};
+  const prevTh = room.predictions[state.user.id].thirdPlace || [];
+  appendAuditLog(room, 'group', diffGroupPreds(prevG, state.groupPreds, prevTh, state.thirdPlace));
   room.predictions[state.user.id].groups = state.groupPreds;
   room.predictions[state.user.id].thirdPlace = state.thirdPlace;
   state.room = room;
@@ -2397,6 +2571,8 @@ async function saveKnockoutPredictions() {
   const room = await getRoom(state.room.code);
   if (!room) return;
   if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
+  const prevK = room.predictions[state.user.id].knockout || {};
+  appendAuditLog(room, 'knockout', diffKnockoutPreds(prevK, state.knockoutPreds));
   room.predictions[state.user.id].knockout = state.knockoutPreds;
   room.predictions[state.user.id].groups = state.groupPreds;
   room.predictions[state.user.id].thirdPlace = state.thirdPlace;
@@ -2445,6 +2621,9 @@ function computeScores(room) {
       const pred = fixturePreds[gmId];
       const pts = fixturePoints(pred, result);
       if (pts) { s.groupPts += pts; s.total += pts; }
+      // A correct outcome (exact score OR right W/D/L direction) counts as a
+      // "correct winner" here, matching the points model (pts >= 1).
+      if (pts >= 1) s.correctWinners++;
     });
 
     // Knockout scoring
@@ -2678,7 +2857,10 @@ async function submitResult() {
   else if (scoreA > scoreB && ta) winner = ta.key;
   else if (scoreB > scoreA && tb) winner = tb.key;
 
+  const prevRes = room.results[matchId];
+  const prevLabel = prevRes ? `${prevRes.scoreA}-${prevRes.scoreB}` : '—';
   room.results[matchId] = { scoreA, scoreB, winner, timestamp: Date.now() };
+  appendAuditLog(room, 'result', [{ item: `Result ${matchId}`, from: prevLabel, to: `${scoreA}-${scoreB}` }]);
   state.room = room;
   await putRoom(room);
 
@@ -2804,6 +2986,9 @@ async function refreshRoomFromCloud(code) {
       renderGroups();
       renderKnockout();
       renderLeaderboard();
+      // Room is now loaded; if the user signed in before this finished,
+      // the claim offer was deferred — run it now.
+      if (isSignedIn()) maybeOfferClaim();
     }
   } catch (e) {
     console.error('Background cloud refresh failed (using local data):', e);

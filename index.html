@@ -465,9 +465,10 @@
       <div class="section-title">Leaderboard</div>
       <div class="section-subtitle">Points update as tournament results come in</div>
     </div>
-    <button class="btn-sm" onclick="openModal('score-modal')">+ Enter Result</button>
+    <button class="btn-sm" id="enter-result-btn" style="display:none;" onclick="openModal('score-modal')">+ Enter Result</button>
   </div>
   <div class="stats-grid" id="leaderboard-stats"></div>
+  <div id="admin-debug" style="display:none;font-size:11px;color:var(--muted);margin:-8px 0 12px;font-family:monospace;"></div>
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
     <table class="leaderboard-table">
       <thead>
@@ -1057,20 +1058,13 @@ function fmtMatchDateIST(iso) {
 }
 
 // ============================================================
-// MATCHDAY LOCKING (Fixture Mode)
-// A "matchday" = all group matches sharing the same IST calendar date.
-// Rules:
-//   • The first 3 matchdays are unlocked from the start.
-//   • Every later matchday unlocks 2 days before its earliest kickoff
-//     and RE-LOCKS once that earliest kickoff passes.
-//   • The first 3 also lock at their own earliest kickoff.
-// Result: a matchday is editable only within
-//     [earliest_kickoff − 2 days, earliest_kickoff)
-//   except matchdays 1–3, whose window opens at the start of time.
+// PER-MATCH LOCKING (Fixture Mode)
+// Each group match opens 2 days before ITS OWN kickoff and locks AT its
+// own kickoff. Uniform across all matches — no first-N exception.
+// Editable window for a match:  [own_kickoff − 2 days, own_kickoff)
 // ============================================================
 
-const MATCHDAY_OPEN_COUNT = 3;       // first N matchdays open immediately
-const MATCHDAY_LEAD_DAYS = 2;        // others unlock this many days early
+const MATCH_LEAD_DAYS = 2;           // each match unlocks this many days early
 const DAY_MS = 24 * 3600 * 1000;
 
 // Parse an IST wall-clock ISO ("YYYY-MM-DDTHH:MM") into a real instant.
@@ -1082,24 +1076,13 @@ function istToInstant(iso) {
   return Date.UTC(y, m - 1, d, hh, mm) - (5 * 60 + 30) * 60 * 1000;
 }
 
-// Build the ordered matchday table once from GROUP_FIXTURES.
-// Each entry: { date:'YYYY-MM-DD', index, earliestInstant }
-const MATCHDAYS = (function buildMatchdays() {
-  const byDate = {};
-  GROUP_FIXTURES.forEach(fx => {
-    const date = fx.ist.split('T')[0];
-    const inst = istToInstant(fx.ist);
-    if (byDate[date] === undefined || inst < byDate[date]) byDate[date] = inst;
-  });
-  return Object.keys(byDate).sort().map((date, i) => ({
-    date,
-    index: i,                       // 0-based
-    earliestInstant: byDate[date],
-  }));
+// IST calendar dates in order — used only for grouping matches under day
+// headers in the Fixtures view (NOT for locking, which is per-match).
+const MATCH_DATES = (function buildDates() {
+  const seen = {};
+  GROUP_FIXTURES.forEach(fx => { seen[fx.ist.split('T')[0]] = true; });
+  return Object.keys(seen).sort();
 })();
-
-// Map an IST date string to its matchday entry.
-const MATCHDAY_BY_DATE = MATCHDAYS.reduce((acc, md) => { acc[md.date] = md; return acc; }, {});
 
 // Server-clock offset (serverNow - deviceNow), set once at init from Supabase's
 // Date response header. Device clock is spoofable; this makes unlocking
@@ -1137,28 +1120,45 @@ async function syncServerClock() {
   }
 }
 
-// Lock state for a matchday at the current (trusted) time.
+// Lock state for a single match at the current (trusted) time.
 // Returns { locked, reason, opensAt, closesAt }.
-//   reason: 'open' | 'upcoming' (not yet unlocked) | 'closed' (kickoff passed)
-function matchdayLockState(md, now) {
+//   reason: 'open' | 'upcoming' (not yet unlocked) | 'closed' (kicked off)
+// Window is [kickoff − MATCH_LEAD_DAYS, kickoff).
+function fixtureLockState(fx, now) {
+  if (!fx || !fx.ist) return { locked: false, reason: 'open' };
+  // Knockout / date-only entries are not gated here.
+  if (fx.kind && fx.kind !== 'group') return { locked: false, reason: 'open' };
   now = now ?? nowInstant();
-  const closesAt = md.earliestInstant;                 // re-locks at first kickoff
-  const opensAt = md.index < MATCHDAY_OPEN_COUNT
-    ? -Infinity                                        // first N open from the start
-    : md.earliestInstant - MATCHDAY_LEAD_DAYS * DAY_MS;
+  const kickoff = istToInstant(fx.ist);
+  const opensAt = kickoff - MATCH_LEAD_DAYS * DAY_MS;
+  const closesAt = kickoff;
   if (now >= closesAt) return { locked: true, reason: 'closed', opensAt, closesAt };
-  if (now < opensAt)    return { locked: true, reason: 'upcoming', opensAt, closesAt };
+  if (now < opensAt)   return { locked: true, reason: 'upcoming', opensAt, closesAt };
   return { locked: false, reason: 'open', opensAt, closesAt };
 }
 
-// Convenience: lock state for the matchday a fixture belongs to.
-function fixtureLockState(fx, now) {
-  const md = MATCHDAY_BY_DATE[fx.ist.split('T')[0]];
-  if (!md) return { locked: false, reason: 'open' };   // knockout / unknown => not gated here
-  return matchdayLockState(md, now);
+// Day-level summary across all group matches on one IST date, for the day
+// header in the Fixtures view: 'open' (all editable), 'closed' (all kicked
+// off), 'upcoming' (none open yet), or 'mixed' (some open, some not).
+function dayLockSummary(istDate, now) {
+  now = now ?? nowInstant();
+  const dayMatches = GROUP_FIXTURES.filter(fx => fx.ist.split('T')[0] === istDate);
+  if (!dayMatches.length) return { reason: 'open' };
+  let open = 0, closed = 0, upcoming = 0, nextOpensAt = Infinity;
+  dayMatches.forEach(fx => {
+    const s = fixtureLockState({ ist: fx.ist, kind: 'group' }, now);
+    if (s.reason === 'open') open++;
+    else if (s.reason === 'closed') closed++;
+    else { upcoming++; if (s.opensAt < nextOpensAt) nextOpensAt = s.opensAt; }
+  });
+  if (open && (closed || upcoming)) return { reason: 'mixed', nextOpensAt };
+  if (open) return { reason: 'open' };
+  if (upcoming && !closed) return { reason: 'upcoming', nextOpensAt };
+  if (closed && !upcoming && !open) return { reason: 'closed' };
+  return { reason: 'mixed', nextOpensAt };  // closed + upcoming, no open
 }
 
-// Short human label for when a locked matchday opens (in IST), e.g. "Jun 20".
+// Short human label for when a locked match opens (in IST), e.g. "Jun 20".
 function unlockLabel(opensAtInstant) {
   if (!isFinite(opensAtInstant)) return '';
   const istWall = new Date(opensAtInstant + (5 * 60 + 30) * 60 * 1000);
@@ -1187,6 +1187,35 @@ let state = {
 // ============================================================
 const SUPABASE_URL = 'https://fgvjnpnchveuepabxjlt.supabase.co';       // e.g. 'https://abcdxyz.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndmpucG5jaHZldWVwYWJ4amx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzUwOTcsImV4cCI6MjA5Njc1MTA5N30.Z77cqvA7WBkVWlLvL0g6CFRAGyw7M4AsoRDFl8BvhN8';  // your project's anon/public key
+
+// ============================================================
+// ADMIN CONFIG — who may enter official results.
+// This is UI gating (hides the controls from non-admins). It is NOT
+// server-enforced: a determined user with dev tools and the public anon
+// key could still write. Sufficient for a friendly pool. To make it
+// tamper-proof later, enforce in Supabase RLS once you split results out.
+//
+// Preferred: list your sign-in EMAIL(s). Stable across every device once
+// you're signed in. Case-insensitive.
+const ADMIN_EMAILS = [
+  'seshanarayanan12@gmail.com',
+];
+// Fallback for use BEFORE signing in: list device id(s). The small "admin
+// debug" line under the leaderboard shows your current id. Note: a device
+// id changes if you clear browser storage or switch devices.
+const ADMIN_DEVICE_IDS = [
+];
+
+// True if the current player is an admin (by signed-in email, or device id).
+function isAdmin() {
+  if (isSignedIn() && authUser.email) {
+    const e = authUser.email.trim().toLowerCase();
+    if (ADMIN_EMAILS.some(a => a.trim().toLowerCase() === e)) return true;
+  }
+  if (state.user && ADMIN_DEVICE_IDS.includes(state.user.id)) return true;
+  return false;
+}
+
 
 // Detect a sandboxed preview iframe (e.g. about:srcdoc) where network fetch is
 // proxied via postMessage and cannot serialize Headers — Supabase can't work
@@ -1301,6 +1330,26 @@ function updateAuthUI() {
     el.innerHTML = `<button class="btn-sm" title="${email}" onclick="signOut()">Sign out</button>`;
   } else {
     el.innerHTML = `<button class="btn-sm" onclick="openAuthModal()">Sign in</button>`;
+  }
+  applyAdminUI();
+}
+
+// Show/hide admin-only result controls based on isAdmin(). Also renders a
+// small debug line (your current identity) to help configure ADMIN_DEVICE_IDS
+// before signing in. UI gating only — see ADMIN CONFIG note above.
+function applyAdminUI() {
+  const admin = isAdmin();
+  const btn = document.getElementById('enter-result-btn');
+  if (btn) btn.style.display = admin ? '' : 'none';
+  const dbg = document.getElementById('admin-debug');
+  if (dbg) {
+    if (state.user) {
+      const who = isSignedIn() ? (authUser.email || 'signed in') : 'anonymous';
+      dbg.textContent = `admin debug · id: ${state.user.id} · ${who} · admin: ${admin ? 'YES' : 'no'}`;
+      dbg.style.display = 'block';
+    } else {
+      dbg.style.display = 'none';
+    }
   }
 }
 
@@ -1643,19 +1692,23 @@ function renderFixtures() {
   fixtures.forEach(f => {
     const t = fmtIST(f.ist);
     const dayLabel = t.day + ', ' + t.date;
-    // Lock state for this fixture's matchday (Fixture Mode, group stage only).
+    // Per-match lock state (Fixture Mode, group stage only).
     const lock = (isFixtureMode && f.kind === 'group')
       ? fixtureLockState(f, now)
       : { locked: false, reason: 'open' };
     if (dayLabel !== lastDay) {
       let badge = '';
       if (isFixtureMode && f.kind === 'group') {
-        if (lock.reason === 'upcoming') {
-          badge = `<span class="fx-md-lock">🔒 unlocks ${unlockLabel(lock.opensAt)}</span>`;
-        } else if (lock.reason === 'closed') {
-          badge = `<span class="fx-md-lock">🔒 locked</span>`;
-        } else {
+        // Summarize across all matches on this date (they lock individually).
+        const sum = dayLockSummary(f.ist.split('T')[0], now);
+        if (sum.reason === 'open') {
           badge = `<span class="fx-md-open">🟢 open</span>`;
+        } else if (sum.reason === 'closed') {
+          badge = `<span class="fx-md-lock">🔒 locked</span>`;
+        } else if (sum.reason === 'upcoming') {
+          badge = `<span class="fx-md-lock">🔒 unlocks ${unlockLabel(sum.nextOpensAt)}</span>`;
+        } else {
+          badge = `<span class="fx-md-open">🟢 some open</span>`;
         }
       }
       html += `<div class="fx-day-header">${dayLabel}${badge}</div>`;
@@ -1678,9 +1731,9 @@ function renderFixtures() {
       } else if (lock.locked) {
         resultLine = lock.reason === 'upcoming'
           ? `<div class="fx-lock-note">🔒 Opens ${unlockLabel(lock.opensAt)} (2 days before kickoff)</div>`
-          : `<div class="fx-lock-note">🔒 Predictions locked — matchday has kicked off</div>`;
+          : `<div class="fx-lock-note">🔒 Predictions locked — this match has kicked off</div>`;
       }
-      // Disable inputs if the result is in OR the matchday is locked.
+      // Disable inputs if the result is in OR the match is locked.
       const disabled = (res || lock.locked) ? 'disabled' : '';
       // FotMob-style horizontal card:  Team1 (name+flag, right-aligned)
       //   [scoreA] : [scoreB]  Team2 (flag+name, left-aligned).
@@ -1727,7 +1780,7 @@ function renderFixtures() {
 // Live-capture a fixture score input into state (without full save)
 function onFixtureInput(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};
-  // Refuse edits to a locked matchday (defense-in-depth beyond disabled inputs).
+  // Refuse edits to a locked match (defense-in-depth beyond disabled inputs).
   const idx = parseInt(gmId.split('_')[1], 10);
   const fx = GROUP_FIXTURES[idx];
   if (fx) {
@@ -1735,8 +1788,8 @@ function onFixtureInput(gmId) {
     const res = state.room && state.room.results && state.room.results['fx_' + gmId];
     if (lock.locked && !res) {
       toast(lock.reason === 'upcoming'
-        ? `This matchday opens ${unlockLabel(lock.opensAt)} (2 days before kickoff).`
-        : 'This matchday is locked — kickoff has passed.', 'info');
+        ? `This match opens ${unlockLabel(lock.opensAt)} (2 days before kickoff).`
+        : 'This match is locked — kickoff has passed.', 'info');
       renderFixtures(); // restore disabled state / clear stray input
       return;
     }
@@ -1769,8 +1822,8 @@ async function saveFixturePredictions() {
   const room = await getRoom(state.room.code);
   if (!room) return;
   if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
-  // Persist only predictions for currently-editable (open) matchdays, so a
-  // locked matchday can never be written via a stale or tampered payload.
+  // Persist only predictions for currently-editable (open) matches, so a
+  // locked match can never be written via a stale or tampered payload.
   const clean = {};
   Object.keys(state.fixturePreds || {}).forEach(gmId => {
     const idx = parseInt(gmId.split('_')[1], 10);
@@ -1778,7 +1831,7 @@ async function saveFixturePredictions() {
     const res = room.results && room.results['fx_' + gmId];
     if (!fx) { clean[gmId] = state.fixturePreds[gmId]; return; }
     const lock = fixtureLockState({ ist: fx.ist, kind: 'group' });
-    // Keep if matchday is open, or if a result already exists (historical pred).
+    // Keep if the match is open, or if a result already exists (historical pred).
     if (!lock.locked || res) clean[gmId] = state.fixturePreds[gmId];
   });
   state.fixturePreds = clean;
@@ -2436,6 +2489,9 @@ function renderLeaderboard() {
     .sort((a, b) => b.total - a.total);
   
   const maxPts = Math.max(...sorted.map(m => m.total), 1);
+
+  // Toggle admin-only controls (Enter Result) and the admin debug line.
+  applyAdminUI();
   
   // Stats
   document.getElementById('leaderboard-stats').innerHTML = `
@@ -2562,6 +2618,7 @@ function updateResultTeamLabels(matchId) {
 
 async function submitResult() {
   if (!state.room || !state.user) { toast('You must be in a room to submit results'); return; }
+  if (!isAdmin()) { toast('Only the room admin can enter results.'); closeModal('score-modal'); return; }
 
   const round = document.getElementById('result-round').value;
   const room = await getRoom(state.room.code);
@@ -2708,7 +2765,7 @@ async function init() {
     refreshRoomFromCloud(state.room.code);
   }
 
-  // 3) Sync a trusted clock in the background so matchday locks can't be
+  // 3) Sync a trusted clock in the background so match locks can't be
   //    bypassed by changing the device clock. Re-render fixtures once it lands.
   if (useCloud) {
     syncServerClock().then(() => {

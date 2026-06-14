@@ -2621,9 +2621,10 @@ function computeScores(room) {
       const pred = fixturePreds[gmId];
       const pts = fixturePoints(pred, result);
       if (pts) { s.groupPts += pts; s.total += pts; }
-      // A correct outcome (exact score OR right W/D/L direction) counts as a
-      // "correct winner" here, matching the points model (pts >= 1).
-      if (pts >= 1) s.correctWinners++;
+      // "Correct Winners" reflects EXACT scoreline hits only (the 3-pt
+      // predictions) — the harder, more valuable call. A merely-correct
+      // outcome (1 pt) still scores but does not count here.
+      if (pts === FIXTURE_EXACT_PTS) s.correctWinners++;
     });
 
     // Knockout scoring

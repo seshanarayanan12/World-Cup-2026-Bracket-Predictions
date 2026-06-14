@@ -270,6 +270,20 @@
     .predict-name { font-size: 12px; }
     .score-input { width: 40px; height: 40px; font-size: 18px; }
   }
+  /* AUTO-SYNC */
+  .sync-row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .sync-row:last-child { border-bottom: none; }
+  .sync-row .sync-label { flex: 1; }
+  .sync-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .sync-pill.new    { background: rgba(34,197,94,0.15); color: var(--green); }
+  .sync-pill.exists { background: rgba(148,163,184,0.1); color: var(--dim); }
+  .sync-pill.skip   { background: rgba(59,130,246,0.12); color: var(--blue); }
+  .sync-pill.warn   { background: rgba(245,166,35,0.15); color: var(--gold); }
+  .sync-section-head { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px 4px; }
+  .sync-stats { display: flex; gap: 16px; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+  .sync-stats span { color: var(--muted); }
+  .sync-stats b { color: var(--text); }
+
   /* DEFENSIVE OVERRIDES — guarantee content visibility */
   .page.active, .page.active * { visibility: visible !important; }
   .page.active { display: block !important; opacity: 1 !important; }
@@ -466,6 +480,7 @@
       <div class="section-subtitle">Points update as tournament results come in</div>
     </div>
     <button class="btn-sm" id="audit-log-btn" style="display:none;" onclick="openAuditLog()">📋 Activity Log</button>
+    <button class="btn-sm" id="sync-results-btn" style="display:none;" onclick="openSyncModal()">🔄 Sync Results</button>
     <button class="btn-sm" id="enter-result-btn" style="display:none;" onclick="openModal('score-modal')">+ Enter Result</button>
   </div>
   <div class="stats-grid" id="leaderboard-stats"></div>
@@ -752,6 +767,26 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal('score-modal')">Cancel</button>
       <button class="modal-confirm" onclick="submitResult()">Update Scores</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTO-SYNC MODAL -->
+<div class="modal-overlay" id="sync-modal">
+  <div class="modal" style="max-width:560px;">
+    <h2>🔄 Sync Results from football-data.org</h2>
+    <p style="font-size:13px;color:var(--muted);margin:-4px 0 14px;">
+      Fetches finished matches from the official API and previews what will be written.
+      Only <b>new</b> results are applied — existing entries are never overwritten.
+    </p>
+    <div id="sync-preview-area">
+      <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">
+        Loading from football-data.org…
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="modal-cancel" onclick="closeModal('sync-modal')">Cancel</button>
+      <button class="modal-confirm" id="sync-apply-btn" style="display:none;" onclick="applySyncResults()">Apply New Results</button>
     </div>
   </div>
 </div>
@@ -1232,6 +1267,15 @@ const ADMIN_EMAILS = [
 const ADMIN_DEVICE_IDS = [
 ];
 
+// ============================================================
+// FOOTBALL-DATA.ORG AUTO-SYNC CONFIG
+// Free API — register at https://www.football-data.org/client/register
+// The World Cup (code "WC") is included on the free tier. 10 req/min.
+// Paste your key below to enable the admin "Sync Results" button.
+// Leave blank '' to disable it.
+// ============================================================
+const FOOTBALL_DATA_API_KEY = '47a8da1f171641af92adc8d966f77897';  // e.g. 'abc123def456...'
+
 // True if the current player is an admin (by signed-in email, or device id).
 function isAdmin() {
   if (isSignedIn() && authUser.email) {
@@ -1373,6 +1417,8 @@ function applyAdminUI() {
   if (btn) btn.style.display = admin ? '' : 'none';
   const logBtn = document.getElementById('audit-log-btn');
   if (logBtn) logBtn.style.display = admin ? '' : 'none';
+  const syncBtn = document.getElementById('sync-results-btn');
+  if (syncBtn) syncBtn.style.display = (admin && FOOTBALL_DATA_API_KEY) ? '' : 'none';
   const dbg = document.getElementById('admin-debug');
   if (dbg) {
     if (state.user) {
@@ -2869,6 +2915,330 @@ async function submitResult() {
   renderLeaderboard();
   renderKnockout();
   toast('Result recorded! Scores updated.', 'success');
+}
+
+// ============================================================
+// AUTO-SYNC — football-data.org
+// Fetches finished WC matches + group standings, diffs against
+// room.results, and lets the admin preview + apply new entries.
+// ============================================================
+
+// Map football-data.org team names → our internal team keys.
+// The API uses full names; we map to the keys used in TEAMS/GROUP_FIXTURES.
+const FD_TEAM_MAP = {
+  'Mexico': 'Mexico', 'South Africa': 'South Africa', 'Korea Republic': 'South Korea',
+  'South Korea': 'South Korea', 'Czechia': 'Czechia', 'Czech Republic': 'Czechia',
+  'Canada': 'Canada', 'Switzerland': 'Switzerland', 'Qatar': 'Qatar',
+  'Bosnia-Herzegovina': 'Bosnia', 'Bosnia and Herzegovina': 'Bosnia',
+  'Brazil': 'Brazil', 'Morocco': 'Morocco', 'Haiti': 'Haiti', 'Scotland': 'Scotland',
+  'USA': 'USA', 'United States': 'USA', 'Paraguay': 'Paraguay',
+  'Australia': 'Australia', 'Türkiye': 'Turkiye', 'Turkey': 'Turkiye',
+  'Germany': 'Germany', 'Curaçao': 'Curacao', "Côte d'Ivoire": 'Ivory Coast',
+  'Ivory Coast': 'Ivory Coast', 'Ecuador': 'Ecuador',
+  'Netherlands': 'Netherlands', 'Japan': 'Japan', 'Tunisia': 'Tunisia', 'Sweden': 'Sweden',
+  'Belgium': 'Belgium', 'Egypt': 'Egypt', 'Iran': 'Iran', 'New Zealand': 'New Zealand',
+  'Spain': 'Spain', 'Cabo Verde': 'Cape Verde', 'Cape Verde': 'Cape Verde',
+  'Saudi Arabia': 'Saudi Arabia', 'Uruguay': 'Uruguay',
+  'France': 'France', 'Senegal': 'Senegal', 'Norway': 'Norway', 'Iraq': 'Iraq',
+  'Argentina': 'Argentina', 'Algeria': 'Algeria', 'Austria': 'Austria', 'Jordan': 'Jordan',
+  'Portugal': 'Portugal', 'Uzbekistan': 'Uzbekistan', 'Colombia': 'Colombia',
+  'DR Congo': 'DR Congo', 'Congo DR': 'DR Congo', 'Democratic Republic of the Congo': 'DR Congo',
+  'England': 'England', 'Croatia': 'Croatia', 'Ghana': 'Ghana', 'Panama': 'Panama',
+};
+
+// Map API stage strings → our round keys
+const FD_STAGE_MAP = {
+  'ROUND_OF_32': 'r32', 'LAST_32': 'r32',
+  'ROUND_OF_16': 'r16', 'LAST_16': 'r16',
+  'QUARTER_FINALS': 'qf', 'QUARTER_FINAL': 'qf',
+  'SEMI_FINALS': 'sf', 'SEMI_FINAL': 'sf',
+  'FINAL': 'final',
+};
+
+// Map API group string "GROUP_A" → letter "A"
+function fdGroupLetter(apiGroup) {
+  if (!apiGroup) return null;
+  const m = apiGroup.match(/GROUP_([A-L])/);
+  return m ? m[1] : null;
+}
+
+// Resolve our internal team key from an API team name
+function fdTeamKey(apiName) {
+  if (!apiName) return null;
+  return FD_TEAM_MAP[apiName] || null;
+}
+
+// Fetch all WC matches from football-data.org (single call — 104 matches)
+async function fdFetchMatches() {
+  const resp = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
+    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY },
+  });
+  if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json();
+  return data.matches || [];
+}
+
+// Fetch group standings (used for Bracket Mode qualifier sync)
+async function fdFetchStandings() {
+  const resp = await fetch('https://api.football-data.org/v4/competitions/WC/standings', {
+    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY },
+  });
+  if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json();
+  return data.standings || [];
+}
+
+// Build the pending-results diff that will be shown in the preview modal.
+// Returns { toWrite: [...], alreadyDone: [...], warnings: [...] }
+async function buildSyncDiff() {
+  const [apiMatches, apiStandings] = await Promise.all([fdFetchMatches(), fdFetchStandings()]);
+  const room = await getRoom(state.room.code);
+  const existing = room.results || {};
+  const mode = room.mode === 'fixture' ? 'fixture' : 'bracket';
+
+  const toWrite = [];
+  const alreadyDone = [];
+  const warnings = [];
+
+  // ── GROUP STAGE ──────────────────────────────────────────────
+  const groupMatches = apiMatches.filter(m => m.stage === 'GROUP_STAGE' && m.status === 'FINISHED');
+
+  if (mode === 'fixture') {
+    // Fixture Mode: match each finished group match to our GROUP_FIXTURES by teams
+    groupMatches.forEach(m => {
+      const homeKey = fdTeamKey(m.homeTeam.name);
+      const awayKey = fdTeamKey(m.awayTeam.name);
+      if (!homeKey || !awayKey) {
+        warnings.push(`Unrecognised team: "${m.homeTeam.name}" vs "${m.awayTeam.name}"`);
+        return;
+      }
+      const idx = GROUP_FIXTURES.findIndex(f =>
+        (f.a === homeKey && f.b === awayKey) || (f.a === awayKey && f.b === homeKey)
+      );
+      if (idx === -1) {
+        warnings.push(`No fixture match for ${homeKey} vs ${awayKey}`);
+        return;
+      }
+      const gmId = 'gm_' + idx;
+      const resKey = 'fx_' + gmId;
+      const fx = GROUP_FIXTURES[idx];
+      // Swap scores if API home/away differs from our fixture order
+      const flipped = (fx.a === awayKey);
+      const scoreA = flipped ? m.score.fullTime.away : m.score.fullTime.home;
+      const scoreB = flipped ? m.score.fullTime.home : m.score.fullTime.away;
+      const entry = { resKey, label: `${homeKey} vs ${awayKey}`, scoreA, scoreB, type: 'fx', gmId };
+      if (existing[resKey] !== undefined) alreadyDone.push(entry);
+      else toWrite.push(entry);
+    });
+  } else {
+    // Bracket Mode: use standings to determine 1st/2nd/3rd per group
+    // Only write a group result once all 3 matchdays in that group are done.
+    // Build a map of group → [finished match count]
+    const groupMatchCount = {};
+    groupMatches.forEach(m => {
+      const grp = fdGroupLetter(m.group);
+      if (grp) groupMatchCount[grp] = (groupMatchCount[grp] || 0) + 1;
+    });
+
+    apiStandings.forEach(standing => {
+      if (standing.type !== 'TOTAL') return;
+      const grp = fdGroupLetter(standing.group);
+      if (!grp) return;
+      const table = standing.table || [];
+      // Only write if all 6 group matches are done
+      if ((groupMatchCount[grp] || 0) < 6) return;
+      const first = fdTeamKey(table[0]?.team?.name);
+      const second = fdTeamKey(table[1]?.team?.name);
+      const third = fdTeamKey(table[2]?.team?.name);
+      if (!first || !second) {
+        warnings.push(`Group ${grp}: couldn't resolve 1st/2nd place team names`);
+        return;
+      }
+      const resKey = 'group_' + grp;
+      const entry = { resKey, label: `Group ${grp}`, first, second, third, type: 'group', grp };
+      if (existing[resKey] !== undefined) alreadyDone.push(entry);
+      else toWrite.push(entry);
+    });
+  }
+
+  // ── KNOCKOUT ─────────────────────────────────────────────────
+  const koMatches = apiMatches.filter(m => m.stage !== 'GROUP_STAGE' && m.status === 'FINISHED');
+  const allKoFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
+
+  koMatches.forEach(m => {
+    const roundKey = FD_STAGE_MAP[m.stage];
+    if (!roundKey) { warnings.push(`Unknown knockout stage: ${m.stage}`); return; }
+    const homeKey = fdTeamKey(m.homeTeam.name);
+    const awayKey = fdTeamKey(m.awayTeam.name);
+    if (!homeKey || !awayKey) {
+      warnings.push(`KO unrecognised: "${m.homeTeam.name}" vs "${m.awayTeam.name}"`);
+      return;
+    }
+    // Match to our fixture by finding one whose resolved slots equal these teams
+    const fixture = allKoFixtures.find(f => {
+      const ta = getTeamForSlot(f.a);
+      const tb = getTeamForSlot(f.b);
+      return (ta && ta.key === homeKey && tb && tb.key === awayKey) ||
+             (ta && ta.key === awayKey && tb && tb.key === homeKey);
+    });
+    if (!fixture) {
+      // Teams may not be resolvable yet if prior round results aren't in — skip silently
+      return;
+    }
+    const ta = getTeamForSlot(fixture.a);
+    const tb = getTeamForSlot(fixture.b);
+    const flipped = (ta && ta.key === awayKey);
+    const scoreA = flipped ? m.score.fullTime.away : m.score.fullTime.home;
+    const scoreB = flipped ? m.score.fullTime.home : m.score.fullTime.away;
+    // Determine winner (accounts for ET/pens: score.winner is HOME_TEAM/AWAY_TEAM)
+    let winner = null;
+    if (m.score.winner === 'HOME_TEAM') winner = homeKey;
+    else if (m.score.winner === 'AWAY_TEAM') winner = awayKey;
+    else if (scoreA > scoreB) winner = flipped ? awayKey : homeKey;
+    else if (scoreB > scoreA) winner = flipped ? homeKey : awayKey;
+    const entry = {
+      resKey: fixture.id,
+      label: `${homeKey} vs ${awayKey} (${roundKey.toUpperCase()})`,
+      scoreA, scoreB, winner,
+      type: 'knockout', roundKey, fixtureId: fixture.id,
+    };
+    if (existing[fixture.id] !== undefined) alreadyDone.push(entry);
+    else toWrite.push(entry);
+  });
+
+  return { toWrite, alreadyDone, warnings, mode };
+}
+
+// Cached diff result used by applySyncResults
+let _syncDiff = null;
+
+async function openSyncModal() {
+  if (!isAdmin()) { toast('Admins only.'); return; }
+  if (!FOOTBALL_DATA_API_KEY) { toast('Add your FOOTBALL_DATA_API_KEY to the config first.'); return; }
+  if (!state.room) { toast('Join a room first.'); return; }
+  _syncDiff = null;
+  openModal('sync-modal');
+  document.getElementById('sync-apply-btn').style.display = 'none';
+  document.getElementById('sync-preview-area').innerHTML = `
+    <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">
+      ⏳ Fetching from football-data.org…
+    </div>`;
+  try {
+    const diff = await buildSyncDiff();
+    _syncDiff = diff;
+    renderSyncPreview(diff);
+  } catch (e) {
+    document.getElementById('sync-preview-area').innerHTML = `
+      <div style="padding:16px;color:var(--red);font-size:13px;">
+        ❌ Failed: ${escapeHtml(e.message)}<br><br>
+        Check your API key is correct and that you have internet access.
+        The free tier allows 10 requests/minute.
+      </div>`;
+  }
+}
+
+function renderSyncPreview(diff) {
+  const { toWrite, alreadyDone, warnings, mode } = diff;
+  const area = document.getElementById('sync-preview-area');
+  const applyBtn = document.getElementById('sync-apply-btn');
+
+  let html = `<div class="sync-stats">
+    <span>🟢 New: <b>${toWrite.length}</b></span>
+    <span>✅ Already in: <b>${alreadyDone.length}</b></span>
+    ${warnings.length ? `<span>⚠️ Skipped: <b>${warnings.length}</b></span>` : ''}
+  </div>`;
+
+  if (!toWrite.length && !alreadyDone.length) {
+    html += `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">
+      No finished matches found yet. Check back once matches have been played.
+    </div>`;
+  }
+
+  if (toWrite.length) {
+    html += `<div class="sync-section-head">Will be added (${toWrite.length})</div>`;
+    html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:260px;overflow-y:auto;">`;
+    toWrite.forEach(e => {
+      const detail = e.type === 'group'
+        ? `1st: ${e.first} · 2nd: ${e.second}${e.third ? ` · 3rd: ${e.third}` : ''}`
+        : e.type === 'fx'
+          ? `Score: ${e.scoreA}–${e.scoreB}`
+          : `Score: ${e.scoreA}–${e.scoreB} · Winner: ${e.winner || '?'}`;
+      html += `<div class="sync-row">
+        <span class="sync-label">${escapeHtml(e.label)}<br>
+          <span style="font-size:11px;color:var(--dim);">${escapeHtml(detail)}</span>
+        </span>
+        <span class="sync-pill new">NEW</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (alreadyDone.length) {
+    html += `<div class="sync-section-head" style="margin-top:12px;">Already recorded (${alreadyDone.length})</div>`;
+    html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:140px;overflow-y:auto;">`;
+    alreadyDone.forEach(e => {
+      html += `<div class="sync-row">
+        <span class="sync-label" style="color:var(--dim);">${escapeHtml(e.label)}</span>
+        <span class="sync-pill exists">EXISTS</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (warnings.length) {
+    html += `<div class="sync-section-head" style="margin-top:12px;">Skipped (${warnings.length})</div>`;
+    html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:100px;overflow-y:auto;">`;
+    warnings.forEach(w => {
+      html += `<div class="sync-row"><span class="sync-label" style="color:var(--dim);font-size:12px;">⚠️ ${escapeHtml(w)}</span><span class="sync-pill warn">SKIP</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  area.innerHTML = html;
+  applyBtn.style.display = toWrite.length ? '' : 'none';
+}
+
+async function applySyncResults() {
+  if (!_syncDiff || !_syncDiff.toWrite.length) return;
+  if (!isAdmin()) { toast('Admins only.'); return; }
+  const applyBtn = document.getElementById('sync-apply-btn');
+  applyBtn.disabled = true;
+  applyBtn.textContent = 'Applying…';
+
+  try {
+    const room = await getRoom(state.room.code);
+    if (!room.results) room.results = {};
+    let written = 0;
+
+    for (const e of _syncDiff.toWrite) {
+      // Double-check: never overwrite something that appeared between preview and apply
+      if (room.results[e.resKey] !== undefined) continue;
+
+      if (e.type === 'fx') {
+        room.results[e.resKey] = { scoreA: e.scoreA, scoreB: e.scoreB, timestamp: Date.now() };
+      } else if (e.type === 'group') {
+        room.results[e.resKey] = { first: e.first, second: e.second, third: e.third || null, timestamp: Date.now() };
+      } else if (e.type === 'knockout') {
+        appendAuditLog(room, 'result', [{ item: `Sync ${e.fixtureId}`, from: '—', to: `${e.scoreA}-${e.scoreB}` }]);
+        room.results[e.resKey] = { scoreA: e.scoreA, scoreB: e.scoreB, winner: e.winner, timestamp: Date.now() };
+      }
+      written++;
+    }
+
+    state.room = room;
+    await putRoom(room);
+    closeModal('sync-modal');
+    renderLeaderboard();
+    renderKnockout();
+    if (_syncDiff.mode === 'fixture') renderFixtures();
+    toast(`✅ Synced ${written} result${written !== 1 ? 's' : ''} from football-data.org`, 'success');
+    _syncDiff = null;
+  } catch (e) {
+    toast('Sync failed: ' + e.message);
+  } finally {
+    applyBtn.disabled = false;
+    applyBtn.textContent = 'Apply New Results';
+  }
 }
 
 // ============================================================

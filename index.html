@@ -245,6 +245,11 @@
      neatly with adjacent text and round the corners slightly. */
   .flag.fi { line-height: 1; vertical-align: -0.15em; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
   .flag.flag-unknown { opacity: 0.7; }
+  .claim-banner { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    z-index: 9999; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    max-width: 92vw; background: var(--card); border: 1px solid var(--gold);
+    border-radius: 12px; padding: 12px 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+    font-size: 13px; color: var(--text); }
   
   .mobile-menu { display: none; }
   .mobile-menu.open { display: flex; position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: var(--surface); z-index: 99; flex-direction: column; padding: 16px; gap: 4px; }
@@ -288,6 +293,7 @@
     <button class="nav-tab" onclick="showPage('leaderboard')" id="tab-leaderboard">Leaderboard</button>
   </div>
   <div class="nav-user" id="nav-user-area">
+    <span id="auth-area"></span>
     <button class="btn-sm" onclick="openModal('join-modal')">Join Room</button>
     <button class="btn-sm btn-primary" onclick="openModal('create-modal')">Create Room</button>
   </div>
@@ -556,6 +562,34 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal('join-modal')">Cancel</button>
       <button class="modal-confirm" onclick="joinRoom()">Join Room</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <h2>✉️ Sign in</h2>
+    <p style="color:var(--muted);font-size:13px;margin:-4px 0 14px;">
+      Optional, but recommended. Sign in and your predictions follow you across
+      devices. We'll email you a one-tap magic link — no password.
+    </p>
+    <div id="auth-form-row">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal('auth-modal')">Cancel</button>
+        <button class="modal-confirm" id="auth-send-btn" onclick="sendMagicLink()">Send magic link</button>
+      </div>
+    </div>
+    <div id="auth-sent-note" style="display:none;">
+      <p style="color:var(--text);font-size:14px;">
+        ✅ Check your inbox and tap the link to finish signing in. You can close this.
+      </p>
+      <div class="modal-actions">
+        <button class="modal-confirm" onclick="closeModal('auth-modal')">Done</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1182,6 +1216,180 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && !IS_SANDBOX) {
   } catch (e) { useCloud = false; }
 }
 
+// ============================================================
+// AUTH (magic link) — OPTIONAL. Anonymous play is unchanged.
+// Signing in makes identity portable across devices: a signed-in
+// user's prediction key becomes a stable id derived from their auth
+// UUID (prefixed 'auth_'), instead of a per-device random code.
+// No database/table changes — we only change what string goes into
+// the existing members[].id / predictions[<id>] fields.
+// ============================================================
+
+let authUser = null;  // Supabase auth user object when signed in, else null
+
+// Stable per-account identity id from an auth user.
+function authIdFor(u) { return u ? 'auth_' + u.id : null; }
+
+// Is the current player signed in?
+function isSignedIn() { return !!authUser; }
+
+// Read the current session at boot and subscribe to future changes.
+async function initAuth() {
+  if (!useCloud || !sbClient.auth) return;
+  try {
+    const { data } = await sbClient.auth.getSession();
+    authUser = data && data.session ? data.session.user : null;
+  } catch (e) { authUser = null; }
+
+  // React to magic-link completion, token refresh, and sign-out.
+  sbClient.auth.onAuthStateChange((_event, session) => {
+    const prev = authUser ? authUser.id : null;
+    authUser = session ? session.user : null;
+    const now = authUser ? authUser.id : null;
+    if (prev !== now) {
+      updateAuthUI();
+      updateNavUser();
+      // If we just signed in while sitting in a room, offer to claim picks.
+      if (now && state.room) maybeOfferClaim();
+    }
+  });
+  updateAuthUI();
+}
+
+// Send a magic link to the entered email.
+async function sendMagicLink() {
+  const emailEl = document.getElementById('auth-email');
+  const email = (emailEl.value || '').trim();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    toast('Enter a valid email address'); return;
+  }
+  if (!useCloud) { toast('Sign-in needs the cloud connection'); return; }
+  const btn = document.getElementById('auth-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    const { error } = await sbClient.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) throw error;
+    document.getElementById('auth-sent-note').style.display = 'block';
+    document.getElementById('auth-form-row').style.display = 'none';
+    toast('Magic link sent — check your email', 'success');
+  } catch (e) {
+    toast('Could not send link: ' + fmtErr(e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send magic link'; }
+  }
+}
+
+async function signOut() {
+  if (!useCloud || !sbClient.auth) return;
+  try { await sbClient.auth.signOut(); } catch (e) {}
+  authUser = null;
+  updateAuthUI();
+  updateNavUser();
+  toast('Signed out');
+}
+
+// Update the nav sign-in affordance based on auth state.
+function updateAuthUI() {
+  const el = document.getElementById('auth-area');
+  if (!el) return;
+  if (!useCloud) { el.innerHTML = ''; return; }  // no cloud → no auth UI
+  if (isSignedIn()) {
+    const email = authUser.email || 'account';
+    el.innerHTML = `<button class="btn-sm" title="${email}" onclick="signOut()">Sign out</button>`;
+  } else {
+    el.innerHTML = `<button class="btn-sm" onclick="openAuthModal()">Sign in</button>`;
+  }
+}
+
+function openAuthModal() {
+  const sent = document.getElementById('auth-sent-note');
+  const row = document.getElementById('auth-form-row');
+  if (sent) sent.style.display = 'none';
+  if (row) row.style.display = '';
+  openModal('auth-modal');
+}
+
+// If the device holds anonymous predictions under a random id but the
+// signed-in account has none in this room, offer a one-time claim.
+function maybeOfferClaim() {
+  if (!isSignedIn() || !state.room || !state.user) return;
+  const authId = authIdFor(authUser);
+  const oldId = state.user.id;
+  if (oldId === authId) return;  // already on the auth identity
+  const preds = state.room.predictions || {};
+  const hasOld = preds[oldId] && Object.keys(preds[oldId]).length > 0;
+  const hasNew = preds[authId] && Object.keys(preds[authId]).length > 0;
+  if (hasOld && !hasNew) {
+    showClaimBanner(oldId, authId);
+  } else if (!hasNew) {
+    // No picks to claim, but bind future picks to the auth identity.
+    rebindIdentity(oldId, authId, false);
+  }
+}
+
+// Render a dismissible banner prompting the claim.
+function showClaimBanner(oldId, authId) {
+  let bar = document.getElementById('claim-banner');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'claim-banner';
+    bar.className = 'claim-banner';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `
+    <span>You have predictions on this device. Claim them for your signed-in account so they sync across devices?</span>
+    <button class="btn-sm btn-primary" onclick="claimPicks('${oldId}','${authId}')">Claim my picks</button>
+    <button class="btn-sm" onclick="document.getElementById('claim-banner').remove()">Not now</button>`;
+  bar.style.display = 'flex';
+}
+
+// Move predictions + membership from the device random id to the auth id.
+async function claimPicks(oldId, authId) {
+  const room = await getRoom(state.room.code);
+  if (!room) { toast('Could not load room'); return; }
+  room.predictions = room.predictions || {};
+  // Copy predictions if the target doesn't already have them.
+  if (room.predictions[oldId] && !room.predictions[authId]) {
+    room.predictions[authId] = room.predictions[oldId];
+  }
+  // Update the member entry's id (keep name/color), avoid duplicates.
+  room.members = room.members || [];
+  const meOld = room.members.find(m => m.id === oldId);
+  const meNew = room.members.find(m => m.id === authId);
+  if (meOld && !meNew) { meOld.id = authId; }
+  else if (meOld && meNew) { /* both exist: leave new, drop old below */ }
+  // Drop the stale old member row if a new one already exists.
+  room.members = room.members.filter(m => !(m.id === oldId && room.members.some(x => x.id === authId)));
+  await putRoom(room);
+  state.room = room;
+  state.user = { id: authId, name: state.user.name };
+  saveState();
+  const bar = document.getElementById('claim-banner'); if (bar) bar.remove();
+  updateNavUser();
+  refreshActiveView();
+  toast('Predictions claimed — they now sync to your account', 'success');
+}
+
+// Point the local identity at the auth id without moving data (used when
+// there's nothing to claim). Persists so future saves use the stable id.
+function rebindIdentity(oldId, authId, notify) {
+  if (!state.user) return;
+  state.user.id = authId;
+  saveState();
+  if (notify) toast('Signed in', 'success');
+}
+
+// Re-render whatever view is active after an identity change.
+function refreshActiveView() {
+  if (typeof renderFixtures === 'function' && roomMode() === 'fixture') renderFixtures();
+  if (typeof renderGroups === 'function') try { renderGroups(); } catch(e) {}
+  if (typeof renderKnockout === 'function') try { renderKnockout(); } catch(e) {}
+  if (typeof renderLeaderboard === 'function') try { renderLeaderboard(); } catch(e) {}
+}
+
 // Safe storage layer — falls back to in-memory if localStorage is blocked
 // (sandboxed iframes, private mode, file://, some in-app browsers)
 let memoryStore = {};
@@ -1612,7 +1820,7 @@ async function createRoom() {
   const mode = modeEl ? modeEl.value : 'bracket';
 
   const code = generateCode();
-  const userId = generateCode(8);
+  const userId = isSignedIn() ? authIdFor(authUser) : generateCode(8);
   const roomData = {
     id: generateCode(8),
     name,
@@ -1647,17 +1855,37 @@ async function joinRoom() {
   
   const roomData = await getRoom(code);
   if (!roomData) { toast('Room not found. Check the invite code.'); return; }
-  
-  const userId = generateCode(8);
-  const member = { id: userId, name: userName, color: randomColor() };
-  roomData.members.push(member);
+
+  roomData.members = roomData.members || [];
+  let userId, member;
+  if (isSignedIn()) {
+    // Signed-in: stable identity. If this account is already a member
+    // (e.g. joining from another device), reuse that entry instead of
+    // adding a duplicate; otherwise add a member row with the auth id.
+    userId = authIdFor(authUser);
+    member = roomData.members.find(m => m.id === userId);
+    if (!member) {
+      member = { id: userId, name: userName, color: randomColor() };
+      roomData.members.push(member);
+    } else if (userName) {
+      member.name = userName;  // allow display-name update
+    }
+  } else {
+    userId = generateCode(8);
+    member = { id: userId, name: userName, color: randomColor() };
+    roomData.members.push(member);
+  }
   await putRoom(roomData);
   
   state.room = roomData;
   state.user = { id: userId, name: userName };
-  state.groupPreds = {};
-  state.knockoutPreds = {};
-  state.fixturePreds = {};
+  // Hydrate any predictions this identity already has in the room (e.g. a
+  // signed-in user rejoining from a new device), else start empty.
+  const mine = (roomData.predictions && roomData.predictions[userId]) || {};
+  state.groupPreds = mine.groups || {};
+  state.knockoutPreds = mine.knockout || {};
+  state.fixturePreds = mine.fixtures || {};
+  state.thirdPlace = mine.thirdPlace || [];
   saveState();
   subscribeToRoom(code);
   
@@ -1696,9 +1924,16 @@ function updateNavUser() {
   if (!state.user) return;
   const area = document.getElementById('nav-user-area');
   const initials = state.user.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  let authBtn = '';
+  if (useCloud) {
+    authBtn = isSignedIn()
+      ? `<button class="btn-sm" title="${authUser.email || 'account'}" onclick="signOut()">Sign out</button>`
+      : `<button class="btn-sm" onclick="openAuthModal()">Sign in</button>`;
+  }
   area.innerHTML = `
+    <span id="auth-area">${authBtn}</span>
     <div style="font-size:12px;color:var(--muted);">${state.room ? state.room.name : ''}</div>
-    <div class="avatar" title="${state.user.name}">${initials}</div>
+    <div class="avatar" title="${state.user.name}${isSignedIn() ? ' · '+(authUser.email||'') : ''}">${initials}</div>
   `;
   applyModeUI();
 }
@@ -2478,6 +2713,16 @@ async function init() {
   if (useCloud) {
     syncServerClock().then(() => {
       if (roomMode() === 'fixture') renderFixtures();
+    });
+  }
+
+  // 4) Initialize auth (magic link) in the background. Reads any existing
+  //    session, wires the nav button, and — if a magic-link redirect just
+  //    completed while the user is in a room — offers to claim their picks.
+  if (useCloud) {
+    initAuth().then(() => {
+      updateAuthUI();
+      if (isSignedIn() && state.room) maybeOfferClaim();
     });
   }
 }

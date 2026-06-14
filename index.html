@@ -1269,12 +1269,17 @@ const ADMIN_DEVICE_IDS = [
 
 // ============================================================
 // FOOTBALL-DATA.ORG AUTO-SYNC CONFIG
-// Free API — register at https://www.football-data.org/client/register
-// The World Cup (code "WC") is included on the free tier. 10 req/min.
-// Paste your key below to enable the admin "Sync Results" button.
-// Leave blank '' to disable it.
+// The football-data.org API blocks direct browser calls (CORS), so we
+// proxy through a Supabase Edge Function named "sync-wc-results". The
+// API key lives as a secret on Supabase, NOT in this file.
+// Set ENABLE_RESULT_SYNC = true once the Edge Function is deployed.
+// See the deploy guide for setup steps.
 // ============================================================
-const FOOTBALL_DATA_API_KEY = '47a8da1f171641af92adc8d966f77897';  // e.g. 'abc123def456...'
+const ENABLE_RESULT_SYNC = true;  // flip to true after deploying the Edge Function
+// Built from SUPABASE_URL below; the function is reachable at /functions/v1/sync-wc-results
+function syncFunctionUrl() {
+  return SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/sync-wc-results';
+}
 
 // True if the current player is an admin (by signed-in email, or device id).
 function isAdmin() {
@@ -1418,7 +1423,7 @@ function applyAdminUI() {
   const logBtn = document.getElementById('audit-log-btn');
   if (logBtn) logBtn.style.display = admin ? '' : 'none';
   const syncBtn = document.getElementById('sync-results-btn');
-  if (syncBtn) syncBtn.style.display = (admin && FOOTBALL_DATA_API_KEY) ? '' : 'none';
+  if (syncBtn) syncBtn.style.display = (admin && ENABLE_RESULT_SYNC) ? '' : 'none';
   const dbg = document.getElementById('admin-debug');
   if (dbg) {
     if (state.user) {
@@ -2968,30 +2973,30 @@ function fdTeamKey(apiName) {
   return FD_TEAM_MAP[apiName] || null;
 }
 
-// Fetch all WC matches from football-data.org (single call — 104 matches)
-async function fdFetchMatches() {
-  const resp = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
-    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY },
+// Fetch matches + standings via the Supabase Edge Function (proxies
+// football-data.org server-side to avoid browser CORS). One round trip.
+async function fdFetchAll() {
+  const resp = await fetch(syncFunctionUrl(), {
+    method: 'GET',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    },
   });
-  if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`);
+  if (!resp.ok) {
+    let detail = '';
+    try { detail = (await resp.json()).error || ''; } catch (e) { detail = await resp.text(); }
+    throw new Error(`Sync function ${resp.status}: ${detail}`);
+  }
   const data = await resp.json();
-  return data.matches || [];
-}
-
-// Fetch group standings (used for Bracket Mode qualifier sync)
-async function fdFetchStandings() {
-  const resp = await fetch('https://api.football-data.org/v4/competitions/WC/standings', {
-    headers: { 'X-Auth-Token': FOOTBALL_DATA_API_KEY },
-  });
-  if (!resp.ok) throw new Error(`API error ${resp.status}: ${await resp.text()}`);
-  const data = await resp.json();
-  return data.standings || [];
+  if (data.error) throw new Error(data.error);
+  return { matches: data.matches || [], standings: data.standings || [] };
 }
 
 // Build the pending-results diff that will be shown in the preview modal.
 // Returns { toWrite: [...], alreadyDone: [...], warnings: [...] }
 async function buildSyncDiff() {
-  const [apiMatches, apiStandings] = await Promise.all([fdFetchMatches(), fdFetchStandings()]);
+  const { matches: apiMatches, standings: apiStandings } = await fdFetchAll();
   const room = await getRoom(state.room.code);
   const existing = room.results || {};
   const mode = room.mode === 'fixture' ? 'fixture' : 'bracket';
@@ -3114,7 +3119,7 @@ let _syncDiff = null;
 
 async function openSyncModal() {
   if (!isAdmin()) { toast('Admins only.'); return; }
-  if (!FOOTBALL_DATA_API_KEY) { toast('Add your FOOTBALL_DATA_API_KEY to the config first.'); return; }
+  if (!ENABLE_RESULT_SYNC) { toast('Result sync is not enabled yet (deploy the Edge Function first).'); return; }
   if (!state.room) { toast('Join a room first.'); return; }
   _syncDiff = null;
   openModal('sync-modal');

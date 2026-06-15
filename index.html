@@ -284,6 +284,35 @@
   .sync-stats span { color: var(--muted); }
   .sync-stats b { color: var(--text); }
 
+  /* AUTO-SAVE STATUS */
+  .autosave-status { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.3s; }
+  .autosave-status.saving { color: var(--gold); }
+  .autosave-status.saved { color: var(--green); }
+  .autosave-status.error { color: var(--red); }
+  .autosave-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .autosave-status.saving .dot { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  /* TOURNAMENT STATUS BANNER */
+  .tourney-banner { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 24px; display: flex; align-items: center; gap: 12px; font-size: 13px; position: sticky; top: 56px; z-index: 99; }
+  .tourney-banner-stage { font-weight: 700; color: var(--gold); }
+  .tourney-banner-detail { color: var(--muted); }
+  .tourney-banner-pill { background: rgba(34,197,94,0.12); color: var(--green); border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+  .tourney-banner-pill.pending { background: var(--gold-dim); color: var(--gold); }
+  .tourney-banner-pill.done { background: rgba(148,163,184,0.1); color: var(--dim); }
+
+  /* MY PREDICTIONS SUMMARY CARD */
+  .my-preds-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 600px; margin: 24px auto 0; }
+  .my-preds-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+  .my-preds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .my-preds-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .my-preds-val { font-size: 22px; font-weight: 800; color: var(--gold); }
+  .my-preds-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .my-preds-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; }
+  .my-preds-bar-fill { height: 100%; border-radius: 2px; background: var(--gold); transition: width 0.4s; }
+  .my-preds-item.complete .my-preds-val { color: var(--green); }
+  .my-preds-item.complete .my-preds-bar-fill { background: var(--green); }
+
   /* DEFENSIVE OVERRIDES — guarantee content visibility */
   .page.active, .page.active * { visibility: visible !important; }
   .page.active { display: block !important; opacity: 1 !important; }
@@ -313,6 +342,9 @@
   </div>
   <button class="hamburger" onclick="toggleMobileMenu()">☰</button>
 </nav>
+
+<!-- TOURNAMENT STATUS BANNER -->
+<div id="tourney-banner" class="tourney-banner" style="display:none;"></div>
 
 <div class="mobile-menu" id="mobile-menu">
   <button class="mobile-menu-item" onclick="showPage('home');toggleMobileMenu()">🏠 Home</button>
@@ -360,6 +392,12 @@
           <button class="btn-sm" style="flex:1;" onclick="copyInviteCode()">📋 Copy Code</button>
           <button class="btn-sm btn-primary" style="flex:1;" onclick="startPredicting()">Start Predicting →</button>
         </div>
+      </div>
+    </div>
+    <div id="my-preds-summary" style="display:none;">
+      <div class="my-preds-card">
+        <div class="my-preds-title">📊 Your Predictions</div>
+        <div class="my-preds-grid" id="my-preds-grid"></div>
       </div>
     </div>
     <div id="welcome-hint" style="margin-top:24px;font-size:13px;color:var(--dim);">
@@ -492,7 +530,7 @@
           <th style="width:40px;">#</th>
           <th>Player</th>
           <th style="text-align:right;">Points</th>
-          <th style="text-align:right;display:none;" class="show-sm">Correct Winners</th>
+          <th style="text-align:right;" id="lb-tiebreak-header">Exact Scores</th>
           <th style="text-align:right;">Progress</th>
         </tr>
       </thead>
@@ -1007,6 +1045,154 @@ const ROUND_DATES = {
 };
 
 // ============================================================
+// TOURNAMENT STATUS BANNER
+// Computes the current stage from results + live clock and renders
+// a sticky sub-nav banner showing stage, day, and pending count.
+// ============================================================
+function tournamentStatus() {
+  const now = nowInstant();
+  const results = (state.room && state.room.results) || {};
+  const mode = roomMode();
+
+  const groupResultCount = Object.keys(results).filter(k => k.startsWith('group_')).length;
+  const fxResultCount    = Object.keys(results).filter(k => k.startsWith('fx_')).length;
+
+  const r32Done   = R32_FIXTURES.filter(f => results[f.id] && results[f.id].winner).length;
+  const r16Done   = R16_FIXTURES.filter(f => results[f.id] && results[f.id].winner).length;
+  const qfDone    = QF_FIXTURES.filter(f => results[f.id] && results[f.id].winner).length;
+  const sfDone    = SF_FIXTURES.filter(f => results[f.id] && results[f.id].winner).length;
+  const finalDone = FINAL_FIXTURES.filter(f => results[f.id] && results[f.id].winner).length;
+
+  if (finalDone >= 1) {
+    return { stage: '🏆 Tournament Over', detail: 'Final result is in', pill: 'DONE', pillClass: 'done', pending: 0 };
+  }
+  if (sfDone >= 1 || r32Done >= 1 || r16Done >= 1 || qfDone >= 1) {
+    if (sfDone >= 2) {
+      return { stage: '🏆 Final', detail: 'Jul 19 · MetLife Stadium', pill: '1 match pending', pillClass: 'pending', pending: 1 };
+    }
+    if (qfDone >= 1) {
+      const pending = SF_FIXTURES.length - sfDone;
+      return { stage: '⚡ Semi-Finals', detail: ROUND_DATES.sf, pill: `${pending} match${pending!==1?'es':''} pending`, pillClass: pending ? 'pending' : 'done', pending };
+    }
+    if (r16Done >= 1) {
+      const pending = QF_FIXTURES.length - qfDone;
+      return { stage: '⚡ Quarter-Finals', detail: ROUND_DATES.qf, pill: `${pending} match${pending!==1?'es':''} pending`, pillClass: pending ? 'pending' : 'done', pending };
+    }
+    if (r32Done >= 1) {
+      const pending = R16_FIXTURES.length - r16Done;
+      return { stage: '⚡ Round of 16', detail: ROUND_DATES.r16, pill: `${pending} match${pending!==1?'es':''} pending`, pillClass: pending ? 'pending' : 'done', pending };
+    }
+    const pending = R32_FIXTURES.length - r32Done;
+    return { stage: '⚡ Round of 32', detail: ROUND_DATES.r32, pill: `${pending} match${pending!==1?'es':''} pending`, pillClass: pending ? 'pending' : 'done', pending };
+  }
+
+  const MD_BOUNDARIES = [
+    { end: Date.UTC(2026, 5, 18) - 1, label: 'Matchday 1', dates: 'Jun 11–17' },
+    { end: Date.UTC(2026, 5, 25) - 1, label: 'Matchday 2', dates: 'Jun 18–24' },
+    { end: Date.UTC(2026, 6, 28) - 1, label: 'Matchday 3', dates: 'Jun 25–28' },
+  ];
+  let mdLabel = 'Matchday 3', mdDates = 'Jun 25–28';
+  for (const b of MD_BOUNDARIES) {
+    if (now <= b.end) { mdLabel = b.label; mdDates = b.dates; break; }
+  }
+
+  if (mode === 'fixture') {
+    const pending = 72 - fxResultCount;
+    const pill = pending === 72 ? 'No results yet' : pending === 0 ? 'All results in' : `${pending} matches pending`;
+    return { stage: `⚽ Group Stage · ${mdLabel}`, detail: mdDates, pill, pillClass: pending === 0 ? 'done' : 'pending', pending };
+  } else {
+    const pending = 12 - groupResultCount;
+    const pill = pending === 12 ? 'No results yet' : pending === 0 ? 'All groups done' : `${pending} group${pending!==1?'s':''} pending`;
+    return { stage: `⚽ Group Stage · ${mdLabel}`, detail: mdDates, pill, pillClass: pending === 0 ? 'done' : 'pending', pending };
+  }
+}
+
+function renderTourneyBanner() {
+  const el = document.getElementById('tourney-banner');
+  if (!el) return;
+  if (!state.room) { el.style.display = 'none'; return; }
+  const s = tournamentStatus();
+  el.style.display = 'flex';
+  el.innerHTML = `
+    <span>🌍</span>
+    <span class="tourney-banner-stage">${s.stage}</span>
+    <span class="tourney-banner-detail">${s.detail}</span>
+    <span class="tourney-banner-pill ${s.pillClass}">${s.pill}</span>`;
+}
+
+// ============================================================
+// MY PREDICTIONS SUMMARY CARD
+// ============================================================
+function renderMyPredsSummary() {
+  const el = document.getElementById('my-preds-summary');
+  const grid = document.getElementById('my-preds-grid');
+  if (!el || !grid) return;
+  if (!state.room || !state.user) { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  const mode = roomMode();
+  const koTotal = R32_FIXTURES.length + R16_FIXTURES.length + QF_FIXTURES.length + SF_FIXTURES.length + FINAL_FIXTURES.length;
+
+  if (mode === 'fixture') {
+    const predCount = Object.keys(state.fixturePreds || {}).filter(k => {
+      const p = state.fixturePreds[k];
+      return p && p.scoreA !== undefined && p.scoreB !== undefined;
+    }).length;
+    const total = 72;
+    const pct = Math.round((predCount / total) * 100);
+    const complete = predCount === total;
+    const koPreds = Object.keys(state.knockoutPreds || {}).filter(k => state.knockoutPreds[k].winner).length;
+
+    const results = (state.room && state.room.results) || {};
+    const fxResults = Object.keys(results).filter(k => k.startsWith('fx_'));
+    let exactHits = 0;
+    fxResults.forEach(k => {
+      const gmId = k.slice(3);
+      const pred = (state.fixturePreds || {})[gmId];
+      if (pred && fixturePoints(pred, results[k]) === FIXTURE_EXACT_PTS) exactHits++;
+    });
+
+    grid.innerHTML = `
+      <div class="my-preds-item ${complete ? 'complete' : ''}">
+        <div class="my-preds-val">${predCount}/${total}</div>
+        <div class="my-preds-label">Group matches predicted</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="my-preds-item">
+        <div class="my-preds-val">${exactHits}</div>
+        <div class="my-preds-label">Exact scores so far</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${fxResults.length ? Math.round(exactHits/fxResults.length*100) : 0}%"></div></div>
+      </div>
+      <div class="my-preds-item ${koPreds === koTotal ? 'complete' : ''}">
+        <div class="my-preds-val">${koPreds}/${koTotal}</div>
+        <div class="my-preds-label">Knockout picks</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${Math.round(koPreds/koTotal*100)}%"></div></div>
+      </div>`;
+  } else {
+    const groupsDone = Object.values(state.groupPreds || {}).filter(g => g.first && g.second).length;
+    const thirdPicks = (state.thirdPlace || []).length;
+    const koPreds = Object.keys(state.knockoutPreds || {}).filter(k => state.knockoutPreds[k].winner).length;
+
+    grid.innerHTML = `
+      <div class="my-preds-item ${groupsDone === 12 ? 'complete' : ''}">
+        <div class="my-preds-val">${groupsDone}/12</div>
+        <div class="my-preds-label">Groups picked</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${Math.round(groupsDone/12*100)}%"></div></div>
+      </div>
+      <div class="my-preds-item ${thirdPicks === MAX_THIRD ? 'complete' : ''}">
+        <div class="my-preds-val">${thirdPicks}/${MAX_THIRD}</div>
+        <div class="my-preds-label">3rd-place picks</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${Math.round(thirdPicks/MAX_THIRD*100)}%"></div></div>
+      </div>
+      <div class="my-preds-item ${koPreds === koTotal ? 'complete' : ''}">
+        <div class="my-preds-val">${koPreds}/${koTotal}</div>
+        <div class="my-preds-label">Knockout picks</div>
+        <div class="my-preds-bar"><div class="my-preds-bar-fill" style="width:${Math.round(koPreds/koTotal*100)}%"></div></div>
+      </div>`;
+  }
+}
+
+// ============================================================
 // OFFICIAL FIXTURE LIST (group stage) — all times converted to IST
 // ============================================================
 const GROUP_FIXTURES = [
@@ -1275,7 +1461,7 @@ const ADMIN_DEVICE_IDS = [
 // Set ENABLE_RESULT_SYNC = true once the Edge Function is deployed.
 // See the deploy guide for setup steps.
 // ============================================================
-const ENABLE_RESULT_SYNC = true;  // flip to true after deploying the Edge Function
+const ENABLE_RESULT_SYNC = true;  // Edge Function deployed — sync enabled
 // Built from SUPABASE_URL below; the function is reachable at /functions/v1/sync-wc-results
 function syncFunctionUrl() {
   return SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/sync-wc-results';
@@ -1776,11 +1962,48 @@ function subscribeToRoom(code) {
       { event: '*', schema: 'public', table: 'rooms', filter: 'code=eq.' + code },
       async (payload) => {
         if (payload.new && payload.new.data) {
-          state.room = payload.new.data;
+          const fresh = payload.new.data;
+          const prevResults = (state.room && state.room.results) || {};
+          const newResults = fresh.results || {};
+
+          // Diff results → fire a specific toast per newly added result
+          Object.keys(newResults).filter(k => !prevResults[k]).forEach(k => {
+            const r = newResults[k];
+            if (!k.startsWith('group_') && !k.startsWith('fx_')) {
+              const allFx = [...R32_FIXTURES,...R16_FIXTURES,...QF_FIXTURES,...SF_FIXTURES,...FINAL_FIXTURES];
+              const fx = allFx.find(f => f.id === k);
+              if (fx && r.winner) {
+                const ta = getTeamForSlotFromRoom(fx.a, fresh);
+                const tb = getTeamForSlotFromRoom(fx.b, fresh);
+                const nameA = ta ? ta.name : fx.a;
+                const nameB = tb ? tb.name : fx.b;
+                const scoreStr = (r.scoreA !== undefined && r.scoreB !== undefined) ? ` ${r.scoreA}–${r.scoreB}` : '';
+                const winnerName = (ta && r.winner === ta.key) ? nameA : nameB;
+                toast(`⚽ ${nameA}${scoreStr} ${nameB} · ${winnerName} wins`, 'success');
+              }
+            } else if (k.startsWith('fx_')) {
+              const fxIdx = parseInt(k.replace('fx_gm_',''));
+              const fx = GROUP_FIXTURES[fxIdx];
+              if (fx && r.scoreA !== undefined) {
+                const nameA = TEAMS[fx.a] ? TEAMS[fx.a].name : fx.a;
+                const nameB = TEAMS[fx.b] ? TEAMS[fx.b].name : fx.b;
+                toast(`⚽ ${nameA} ${r.scoreA}–${r.scoreB} ${nameB} · result in`, 'success');
+              }
+            } else if (k.startsWith('group_')) {
+              const grp = k.replace('group_','');
+              const first = TEAMS[r.first] ? TEAMS[r.first].name : r.first;
+              const second = TEAMS[r.second] ? TEAMS[r.second].name : r.second;
+              toast(`📋 Group ${grp} done · 1st ${first} · 2nd ${second}`, 'success');
+            }
+          });
+
+          state.room = fresh;
           saveRoomLocal(state.room);
           showRoomInfo();
           renderLeaderboard();
           renderKnockout();
+          renderTourneyBanner();
+          renderMyPredsSummary();
         }
       })
     .subscribe();
@@ -1793,6 +2016,13 @@ function subscribeToRoom(code) {
 function showPage(id) {
   // In Fixture Mode there is no group-prediction page; route it to Fixtures.
   if (id === 'groups' && roomMode() === 'fixture') id = 'fixtures';
+
+  // Flush any pending fixture autosave before leaving the Fixtures tab.
+  if (_fixtureSaveTimer) {
+    clearTimeout(_fixtureSaveTimer);
+    _fixtureSaveTimer = null;
+    runFixtureAutosave();
+  }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1895,12 +2125,12 @@ function renderFixtures() {
     return;
   }
 
-  // Banner explaining Fixture Mode + save button
+  // Banner explaining Fixture Mode + auto-save status
   let banner = '';
   if (isFixtureMode) {
     banner = `<div class="deadline-banner" style="justify-content:space-between;">
       <span>⚽ Fixture Mode: predict each scoreline. Exact = ${FIXTURE_EXACT_PTS} pts · correct outcome = ${FIXTURE_OUTCOME_PTS} pt.</span>
-      <button class="btn-sm btn-primary" onclick="saveFixturePredictions()">Save Predictions</button>
+      <span id="fixture-autosave-status" class="autosave-status saved"><span class="dot"></span>All changes saved</span>
     </div>`;
   }
 
@@ -2025,6 +2255,64 @@ function onFixtureInput(gmId) {
     state.fixturePreds[gmId] = entry;
   }
   saveState();
+  scheduleFixtureAutosave();
+}
+
+// ============================================================
+// AUTO-SAVE (debounced) — fixture predictions sync to cloud ~1.2s
+// after the last keystroke, with a live status indicator. Replaces
+// the old manual "Save Predictions" button.
+// ============================================================
+let _fixtureSaveTimer = null;
+let _fixtureSaveInFlight = false;
+let _fixtureSavePending = false;
+
+function setFixtureSaveStatus(state_) {
+  const el = document.getElementById('fixture-autosave-status');
+  if (!el) return;
+  if (state_ === 'saving') {
+    el.className = 'autosave-status saving';
+    el.innerHTML = '<span class="dot"></span>Saving…';
+  } else if (state_ === 'saved') {
+    el.className = 'autosave-status saved';
+    el.innerHTML = '<span class="dot"></span>All changes saved';
+  } else if (state_ === 'error') {
+    el.className = 'autosave-status error';
+    el.innerHTML = '<span class="dot"></span>Save failed — retrying…';
+  } else if (state_ === 'unsaved') {
+    el.className = 'autosave-status saving';
+    el.innerHTML = '<span class="dot"></span>Unsaved changes…';
+  }
+}
+
+function scheduleFixtureAutosave() {
+  setFixtureSaveStatus('unsaved');
+  if (_fixtureSaveTimer) clearTimeout(_fixtureSaveTimer);
+  _fixtureSaveTimer = setTimeout(runFixtureAutosave, 1200);
+}
+
+async function runFixtureAutosave() {
+  // If a save is already running, mark that another is needed and bail.
+  if (_fixtureSaveInFlight) { _fixtureSavePending = true; return; }
+  if (!state.room || !state.user) return; // local-only mode: saveState() already ran
+  _fixtureSaveInFlight = true;
+  setFixtureSaveStatus('saving');
+  try {
+    await saveFixturePredictions({ silent: true });
+    setFixtureSaveStatus('saved');
+  } catch (e) {
+    console.error('Fixture autosave failed:', e);
+    setFixtureSaveStatus('error');
+    // Retry once after a short delay
+    setTimeout(() => { _fixtureSavePending = false; scheduleFixtureAutosave(); }, 3000);
+  } finally {
+    _fixtureSaveInFlight = false;
+    // If edits happened during the save, run again to capture them.
+    if (_fixtureSavePending) {
+      _fixtureSavePending = false;
+      scheduleFixtureAutosave();
+    }
+  }
 }
 
 // Points for one fixture prediction vs an official result (exact=3, outcome=1)
@@ -2037,8 +2325,12 @@ function fixturePoints(pred, res) {
   return 0;
 }
 
-async function saveFixturePredictions() {
-  if (!state.room || !state.user) { toast('Join or create a room first!'); return; }
+async function saveFixturePredictions(opts = {}) {
+  const silent = opts.silent === true;
+  if (!state.room || !state.user) {
+    if (!silent) toast('Join or create a room first!');
+    return;
+  }
   const room = await getRoom(state.room.code);
   if (!room) return;
   if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
@@ -2060,7 +2352,8 @@ async function saveFixturePredictions() {
   room.predictions[state.user.id].fixtures = clean;
   state.room = room;
   await putRoom(room);
-  toast('Fixture predictions saved!', 'success');
+  if (!silent) toast('Fixture predictions saved!', 'success');
+  renderMyPredsSummary();
 }
 
 // ============================================================
@@ -2178,6 +2471,8 @@ function showRoomInfo() {
   document.getElementById('room-display-name').textContent = state.room.name;
   document.getElementById('room-display-code').textContent = state.room.code;
   document.getElementById('room-member-count').textContent = state.room.members ? state.room.members.length : '?';
+  renderTourneyBanner();
+  renderMyPredsSummary();
 }
 
 function copyInviteCode() {
@@ -2339,6 +2634,7 @@ async function saveGroupPredictions() {
   await putRoom(room);
   
   toast('Group predictions saved!', 'success');
+  renderMyPredsSummary();
 }
 
 // ============================================================
@@ -2429,6 +2725,22 @@ function getTeamForSlot(slot) {
     return null;
   }
   return null;
+}
+
+// Resolve a knockout slot to its ACTUAL team from a room's results (not the
+// user's predictions). Used by realtime toasts to name teams in W-xxx slots.
+// Falls back to getTeamForSlot for non-winner slots.
+function getTeamForSlotFromRoom(slot, room) {
+  if (slot && slot.startsWith('W-')) {
+    const matchId = slot.slice(2);
+    const res = room && room.results && room.results[matchId];
+    if (res && res.winner) {
+      const t = TEAMS[res.winner];
+      return t ? { key: res.winner, ...t } : null;
+    }
+    return null;
+  }
+  return getTeamForSlot(slot);
 }
 
 // Human-readable description of an unresolved slot (for the bracket UI)
@@ -2631,6 +2943,7 @@ async function saveKnockoutPredictions() {
   await putRoom(room);
   
   toast('Bracket saved!', 'success');
+  renderMyPredsSummary();
 }
 
 // ============================================================
@@ -2707,7 +3020,7 @@ function renderLeaderboard() {
   
   if (!room) {
     document.getElementById('leaderboard-body').innerHTML = `
-      <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
+      <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);">
         Join or create a room to see the leaderboard
       </td></tr>`;
     document.getElementById('leaderboard-stats').innerHTML = '';
@@ -2715,9 +3028,15 @@ function renderLeaderboard() {
   }
   
   const scores = computeScores(room);
+  const isFixture = roomMode() === 'fixture';
+
+  // Sort by total desc, then correctWinners desc as tiebreaker
   const sorted = room.members
     .map(m => ({ ...m, ...scores[m.id] }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => b.total - a.total || b.correctWinners - a.correctWinners);
+
+  const tbHeader = document.getElementById('lb-tiebreak-header');
+  if (tbHeader) tbHeader.textContent = isFixture ? 'Exact Scores' : 'Correct Winners';
   
   const maxPts = Math.max(...sorted.map(m => m.total), 1);
 
@@ -2731,15 +3050,28 @@ function renderLeaderboard() {
     <div class="stat-card"><div class="stat-val">${Object.keys(room.results || {}).length}</div><div class="stat-label">Results In</div></div>
     <div class="stat-card"><div class="stat-val">${Object.keys(room.predictions[state.user?.id]?.knockout || {}).length}</div><div class="stat-label">Your Picks</div></div>
   `;
+
+  // Assign visual ranks accounting for ties (same pts + same tiebreaker = same rank)
+  let displayRank = 1;
+  sorted.forEach((m, i) => {
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      if (m.total !== prev.total || m.correctWinners !== prev.correctWinners) displayRank = i + 1;
+    }
+    m._displayRank = displayRank;
+  });
   
   // Table
   const tbody = document.getElementById('leaderboard-body');
-  tbody.innerHTML = sorted.map((m, i) => {
-    const rank = i + 1;
+  tbody.innerHTML = sorted.map((m) => {
+    const rank = m._displayRank;
     const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
     const initials = m.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     const pct = Math.round((m.total / maxPts) * 100);
     const isMe = state.user && m.id === state.user.id;
+    const tiedWith = sorted.find(x => x.id !== m.id && x.total === m.total);
+    const tbStyle = tiedWith ? 'color:var(--gold);font-weight:700;' : 'color:var(--muted);';
+    const tbTitle = tiedWith ? ' title="Tiebreaker"' : '';
     
     return `<tr style="${isMe ? 'background:rgba(245,166,35,0.05);' : ''}">
       <td><div class="rank-badge ${rankClass}">${rank}</div></td>
@@ -2757,10 +3089,11 @@ function renderLeaderboard() {
         </div>
       </td>
       <td style="text-align:right;font-size:20px;font-weight:800;color:var(--gold);">${m.total}</td>
+      <td style="text-align:right;font-size:15px;${tbStyle}"${tbTitle}>${m.correctWinners}</td>
       <td>
         <div style="min-width:80px;">
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <div style="font-size:11px;color:var(--dim);margin-top:3px;">${m.correctWinners} correct winners</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:3px;">${isFixture ? m.correctWinners + ' exact' : m.correctWinners + ' correct'}</div>
         </div>
       </td>
     </tr>`;
@@ -2871,6 +3204,7 @@ async function submitResult() {
     closeModal('score-modal');
     renderLeaderboard();
     renderKnockout();
+    renderTourneyBanner();
     const n = Object.keys(room.results).filter(k => k.startsWith('group_')).length;
     toast(`Group ${group} recorded (${n}/12 groups). Scores updated.`, 'success');
     return;
@@ -2886,6 +3220,7 @@ async function submitResult() {
     closeModal('score-modal');
     renderLeaderboard();
     renderFixtures();
+    renderTourneyBanner();
     const n = Object.keys(room.results).filter(k => k.startsWith('fx_')).length;
     toast(`Match result recorded (${n}/72 group matches). Scores updated.`, 'success');
     return;
@@ -2919,6 +3254,7 @@ async function submitResult() {
   closeModal('score-modal');
   renderLeaderboard();
   renderKnockout();
+  renderTourneyBanner();
   toast('Result recorded! Scores updated.', 'success');
 }
 
@@ -3246,6 +3582,8 @@ async function applySyncResults() {
     closeModal('sync-modal');
     renderLeaderboard();
     renderKnockout();
+    renderTourneyBanner();
+    renderMyPredsSummary();
     if (_syncDiff.mode === 'fixture') renderFixtures();
     toast(`✅ Synced ${written} result${written !== 1 ? 's' : ''} from football-data.org`, 'success');
     _syncDiff = null;
@@ -3310,6 +3648,8 @@ async function init() {
   renderGroups();
   renderKnockout();
   renderLeaderboard();
+  renderTourneyBanner();
+  renderMyPredsSummary();
 
   const statusEl = document.getElementById('sync-status');
   if (statusEl) {
@@ -3381,6 +3721,17 @@ async function refreshRoomFromCloud(code) {
     console.error('Background cloud refresh failed (using local data):', e);
   }
 }
+
+// If the user closes/refreshes with a pending autosave, attempt a final
+// flush. localStorage is already current via saveState(); this best-effort
+// pushes to the cloud too. (Not guaranteed on unload, but usually succeeds.)
+window.addEventListener('beforeunload', function() {
+  if (_fixtureSaveTimer) {
+    clearTimeout(_fixtureSaveTimer);
+    _fixtureSaveTimer = null;
+    try { runFixtureAutosave(); } catch (e) {}
+  }
+});
 
 try {
   if (document.readyState === 'loading') {

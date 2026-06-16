@@ -1674,7 +1674,21 @@ function parseScoreStr(s) {
 function buildRecoveryPlan(room) {
   const log = Array.isArray(room.auditLog) ? room.auditLog : [];
   const itemIndex = buildFixtureItemIndex();
-  const lastGood = {}; // `${userId}|${gmId}` → "1-1"
+
+  // Transition scan: walk the log in chronological order. For each
+  // (userId, fixture), track the running "last real value" seen in EITHER
+  // the `from` or `to` field. When we see a non-blank → blank transition,
+  // that fixture was blanked by the bug — record the value that was lost.
+  // A later real value (re-entry) overwrites the lost record, so we always
+  // end up with the most recent value that should be present.
+  //
+  // Reading `from` is essential: when a prediction was made before audit
+  // logging began, its only appearance in the log is as the `from` of the
+  // blanking entry (e.g. "1-1 → —"). The previous tool only read `to`, so it
+  // never recovered those — that was the gap.
+  const lostValue = {};   // `${userId}|${gmId}` → "1-1"  (value to reinstate)
+  const wasBlanked = {};  // `${userId}|${gmId}` → true   (saw a real→blank event)
+
   log.forEach(e => {
     if (e.action !== 'fixture') return;
     const gmId = itemIndex[e.item];
@@ -1682,22 +1696,37 @@ function buildRecoveryPlan(room) {
     const uid = e.whoId || '';
     if (!uid) return;
     const key = uid + '|' + gmId;
+
+    const fromVal = parseScoreStr(e.from);
     const toVal = parseScoreStr(e.to);
-    if (toVal) lastGood[key] = e.to; // last real value set; blanks are the bug, ignore
+
+    if (fromVal && !toVal) {
+      // Non-blank → blank: this is a blanking event. The lost value is `from`.
+      lostValue[key] = e.from;
+      wasBlanked[key] = true;
+    } else if (toVal) {
+      // A real value was set (or re-set). This is now the value that should
+      // be present; it supersedes any earlier lost record.
+      lostValue[key] = e.to;
+      // Re-entering a real value clears the "needs recovery" flag — unless a
+      // later blank re-sets it (handled by the branch above on a later pass).
+      wasBlanked[key] = false;
+    }
   });
 
+  // Build the plan: only fixtures that were blanked AND are still blank now.
   const plan = [];
-  Object.keys(lastGood).forEach(key => {
+  Object.keys(lostValue).forEach(key => {
+    if (!wasBlanked[key]) return; // either never blanked, or re-entered since
     const [userId, gmId] = key.split('|');
     const preds = room.predictions && room.predictions[userId];
     const fixtures = (preds && preds.fixtures) || {};
     const currentStr = fmtScorePred(fixtures[gmId]); // "—" if blank/missing
-    if (currentStr === lastGood[key]) return; // already correct
-    if (currentStr !== '—') return;           // current holds a real (later) value — leave it
+    if (currentStr !== '—') return; // user already has a real value — leave it
     const idx = parseInt(gmId.split('_')[1], 10);
     const fx = GROUP_FIXTURES[idx];
     const who = (room.members.find(m => m.id === userId) || {}).name || userId;
-    plan.push({ userId, who, gmId, item: fx ? `${fx.a} v ${fx.b}` : gmId, lostValue: lastGood[key], currentValue: currentStr });
+    plan.push({ userId, who, gmId, item: fx ? `${fx.a} v ${fx.b}` : gmId, lostValue: lostValue[key], currentValue: currentStr });
   });
   return plan;
 }

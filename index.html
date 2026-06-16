@@ -518,6 +518,7 @@
       <div class="section-subtitle">Points update as tournament results come in</div>
     </div>
     <button class="btn-sm" id="audit-log-btn" style="display:none;" onclick="openAuditLog()">📋 Activity Log</button>
+    <button class="btn-sm" id="recovery-btn" style="display:none;" onclick="openRecoveryModal()">🔧 Restore Predictions</button>
     <button class="btn-sm" id="sync-results-btn" style="display:none;" onclick="openSyncModal()">🔄 Sync Results</button>
     <button class="btn-sm" id="enter-result-btn" style="display:none;" onclick="openModal('score-modal')">+ Enter Result</button>
   </div>
@@ -825,6 +826,25 @@
     <div class="modal-actions" style="margin-top:14px;">
       <button class="modal-cancel" onclick="closeModal('sync-modal')">Cancel</button>
       <button class="modal-confirm" id="sync-apply-btn" style="display:none;" onclick="applySyncResults()">Apply New Results</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREDICTION RECOVERY MODAL -->
+<div class="modal-overlay" id="recovery-modal">
+  <div class="modal" style="max-width:560px;">
+    <h2>🔧 Restore Blanked Predictions</h2>
+    <p style="font-size:13px;color:var(--muted);margin:-4px 0 14px;">
+      Reverses the autosave bug by reading the activity log and restoring each
+      player's last real scoreline wherever their current prediction is blank.
+      Predictions that currently hold a real value are never touched.
+    </p>
+    <div id="recovery-preview-area">
+      <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">Analysing…</div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="modal-cancel" onclick="closeModal('recovery-modal')">Cancel</button>
+      <button class="modal-confirm" id="recovery-apply-btn" style="display:none;" onclick="applyRecovery()">Restore All</button>
     </div>
   </div>
 </div>
@@ -1608,6 +1628,8 @@ function applyAdminUI() {
   if (btn) btn.style.display = admin ? '' : 'none';
   const logBtn = document.getElementById('audit-log-btn');
   if (logBtn) logBtn.style.display = admin ? '' : 'none';
+  const recBtn = document.getElementById('recovery-btn');
+  if (recBtn) recBtn.style.display = admin ? '' : 'none';
   const syncBtn = document.getElementById('sync-results-btn');
   if (syncBtn) syncBtn.style.display = (admin && ENABLE_RESULT_SYNC) ? '' : 'none';
   const dbg = document.getElementById('admin-debug');
@@ -1627,6 +1649,150 @@ function openAuditLog() {
   if (!isAdmin()) { toast('Admins only.'); return; }
   openModal('audit-modal');
   renderAuditLog();
+}
+
+// ============================================================
+// PREDICTION RECOVERY — reverse the autosave-blanking bug.
+// Replays the audit log to find each user's last real (non-blank)
+// prediction per fixture, and restores it where the current value
+// is blank or missing. Never overwrites a current real prediction.
+// Admin-only. Shows a preview before applying.
+// ============================================================
+function buildFixtureItemIndex() {
+  const idx = {};
+  GROUP_FIXTURES.forEach((fx, i) => { idx[`${fx.a} v ${fx.b}`] = 'gm_' + i; });
+  return idx;
+}
+
+function parseScoreStr(s) {
+  if (!s || s === '—') return null;
+  const m = String(s).match(/^(\d+)\s*-\s*(\d+)$/);
+  if (!m) return null;
+  return { scoreA: parseInt(m[1], 10), scoreB: parseInt(m[2], 10) };
+}
+
+function buildRecoveryPlan(room) {
+  const log = Array.isArray(room.auditLog) ? room.auditLog : [];
+  const itemIndex = buildFixtureItemIndex();
+  const lastGood = {}; // `${userId}|${gmId}` → "1-1"
+  log.forEach(e => {
+    if (e.action !== 'fixture') return;
+    const gmId = itemIndex[e.item];
+    if (!gmId) return;
+    const uid = e.whoId || '';
+    if (!uid) return;
+    const key = uid + '|' + gmId;
+    const toVal = parseScoreStr(e.to);
+    if (toVal) lastGood[key] = e.to; // last real value set; blanks are the bug, ignore
+  });
+
+  const plan = [];
+  Object.keys(lastGood).forEach(key => {
+    const [userId, gmId] = key.split('|');
+    const preds = room.predictions && room.predictions[userId];
+    const fixtures = (preds && preds.fixtures) || {};
+    const currentStr = fmtScorePred(fixtures[gmId]); // "—" if blank/missing
+    if (currentStr === lastGood[key]) return; // already correct
+    if (currentStr !== '—') return;           // current holds a real (later) value — leave it
+    const idx = parseInt(gmId.split('_')[1], 10);
+    const fx = GROUP_FIXTURES[idx];
+    const who = (room.members.find(m => m.id === userId) || {}).name || userId;
+    plan.push({ userId, who, gmId, item: fx ? `${fx.a} v ${fx.b}` : gmId, lostValue: lastGood[key], currentValue: currentStr });
+  });
+  return plan;
+}
+
+let _recoveryPlan = null;
+
+async function openRecoveryModal() {
+  if (!isAdmin()) { toast('Admins only.'); return; }
+  if (!state.room) { toast('Join a room first.'); return; }
+  _recoveryPlan = null;
+  openModal('recovery-modal');
+  document.getElementById('recovery-apply-btn').style.display = 'none';
+  document.getElementById('recovery-preview-area').innerHTML =
+    `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">Analysing activity log…</div>`;
+  try {
+    const room = await getRoom(state.room.code);
+    const plan = buildRecoveryPlan(room);
+    _recoveryPlan = plan;
+    renderRecoveryPreview(plan);
+  } catch (e) {
+    document.getElementById('recovery-preview-area').innerHTML =
+      `<div style="padding:16px;color:var(--red);font-size:13px;">Failed: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderRecoveryPreview(plan) {
+  const area = document.getElementById('recovery-preview-area');
+  const applyBtn = document.getElementById('recovery-apply-btn');
+  if (!plan.length) {
+    area.innerHTML = `<div style="padding:20px;text-align:center;color:var(--green);font-size:13px;">
+      ✅ No blanked predictions found. Nothing needs restoring.
+    </div>`;
+    applyBtn.style.display = 'none';
+    return;
+  }
+  const byUser = {};
+  plan.forEach(p => { (byUser[p.who] = byUser[p.who] || []).push(p); });
+
+  let html = `<div class="sync-stats"><span>🔧 Predictions to restore: <b>${plan.length}</b> across <b>${Object.keys(byUser).length}</b> player(s)</span></div>`;
+  Object.keys(byUser).forEach(who => {
+    html += `<div class="sync-section-head">${escapeHtml(who)} (${byUser[who].length})</div>`;
+    html += `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;">`;
+    byUser[who].forEach(p => {
+      html += `<div class="sync-row">
+        <span class="sync-label">${escapeHtml(p.item)}<br>
+          <span style="font-size:11px;color:var(--dim);">blank → restore <b>${escapeHtml(p.lostValue)}</b></span>
+        </span>
+        <span class="sync-pill new">RESTORE</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  area.innerHTML = html;
+  applyBtn.style.display = '';
+}
+
+async function applyRecovery() {
+  if (!_recoveryPlan || !_recoveryPlan.length) return;
+  if (!isAdmin()) { toast('Admins only.'); return; }
+  const applyBtn = document.getElementById('recovery-apply-btn');
+  applyBtn.disabled = true;
+  applyBtn.textContent = 'Restoring…';
+  try {
+    const room = await getRoom(state.room.code);
+    let restored = 0;
+    const auditEntries = [];
+    _recoveryPlan.forEach(p => {
+      if (!room.predictions[p.userId]) room.predictions[p.userId] = {};
+      if (!room.predictions[p.userId].fixtures) room.predictions[p.userId].fixtures = {};
+      const fixtures = room.predictions[p.userId].fixtures;
+      // Re-check: only restore if STILL blank (avoid clobbering a concurrent edit).
+      if (fmtScorePred(fixtures[p.gmId]) !== '—') return;
+      const val = parseScoreStr(p.lostValue);
+      if (!val) return;
+      fixtures[p.gmId] = { scoreA: val.scoreA, scoreB: val.scoreB };
+      auditEntries.push({ item: `RECOVERY ${p.item} [${p.who}]`, from: '—', to: p.lostValue });
+      restored++;
+    });
+    if (auditEntries.length) appendAuditLog(room, 'fixture', auditEntries);
+    state.room = room;
+    await putRoom(room);
+    closeModal('recovery-modal');
+    renderLeaderboard();
+    renderMyPredsSummary();
+    const mine = room.predictions[state.user.id];
+    if (mine && mine.fixtures) state.fixturePreds = mine.fixtures;
+    if (roomMode() === 'fixture') renderFixtures();
+    toast(`✅ Restored ${restored} prediction${restored !== 1 ? 's' : ''} and recomputed scores.`, 'success');
+    _recoveryPlan = null;
+  } catch (e) {
+    toast('Recovery failed: ' + e.message);
+  } finally {
+    applyBtn.disabled = false;
+    applyBtn.textContent = 'Restore All';
+  }
 }
 
 // Render the audit log newest-first, honoring the text + type filters.
@@ -2249,11 +2415,27 @@ function onFixtureInput(gmId) {
   const entry = {};
   if (a !== '') entry.scoreA = parseInt(a);
   if (b !== '') entry.scoreB = parseInt(b);
-  if (entry.scoreA === undefined && entry.scoreB === undefined) {
-    delete state.fixturePreds[gmId];
-  } else {
-    state.fixturePreds[gmId] = entry;
-  }
+
+  // Record the in-progress edit. IMPORTANT: we no longer `delete` on empty,
+  // because a transient empty state (user clearing one box to retype) must
+  // never be allowed to wipe a previously-saved prediction. The save layer
+  // decides what is safe to persist. Empty entries are kept in memory only so
+  // the box reflects what's typed; they are not persisted unless explicitly
+  // cleared via clearFixturePrediction().
+  state.fixturePreds[gmId] = entry;
+  saveState();
+  scheduleFixtureAutosave();
+}
+
+// Explicit, intentional clear of a saved prediction (the ONLY path allowed to
+// remove a prediction from the cloud). Wire this to a future "clear" button.
+function clearFixturePrediction(gmId) {
+  if (!state.fixturePreds) state.fixturePreds = {};
+  state.fixturePreds[gmId] = { _cleared: true };
+  const aEl = document.getElementById('fx-' + gmId + '-a');
+  const bEl = document.getElementById('fx-' + gmId + '-b');
+  if (aEl) aEl.value = '';
+  if (bEl) bEl.value = '';
   saveState();
   scheduleFixtureAutosave();
 }
@@ -2334,22 +2516,43 @@ async function saveFixturePredictions(opts = {}) {
   const room = await getRoom(state.room.code);
   if (!room) return;
   if (!room.predictions[state.user.id]) room.predictions[state.user.id] = {};
-  // Persist only predictions for currently-editable (open) matches, so a
-  // locked match can never be written via a stale or tampered payload.
-  const clean = {};
+
+  // CRITICAL: start from what is ALREADY saved in the cloud and merge in only
+  // safe changes. We must NEVER replace the whole fixtures object from
+  // in-memory state, because state.fixturePreds may be incomplete (e.g. not
+  // fully hydrated, or mid-edit), which would silently wipe saved scores.
+  const prevFix = (room.predictions[state.user.id].fixtures) || {};
+  const merged = {};
+  // Carry over every previously-saved prediction verbatim first.
+  Object.keys(prevFix).forEach(gmId => { merged[gmId] = prevFix[gmId]; });
+
   Object.keys(state.fixturePreds || {}).forEach(gmId => {
     const idx = parseInt(gmId.split('_')[1], 10);
     const fx = GROUP_FIXTURES[idx];
+    if (!fx) return;
     const res = room.results && room.results['fx_' + gmId];
-    if (!fx) { clean[gmId] = state.fixturePreds[gmId]; return; }
     const lock = fixtureLockState({ ist: fx.ist, kind: 'group' });
-    // Keep if the match is open, or if a result already exists (historical pred).
-    if (!lock.locked || res) clean[gmId] = state.fixturePreds[gmId];
+    // Never modify a locked match unless a result already exists for it.
+    if (lock.locked && !res) return;
+
+    const entry = state.fixturePreds[gmId] || {};
+
+    // Explicit clear: the only path allowed to remove a saved prediction.
+    if (entry._cleared) {
+      delete merged[gmId];
+      return;
+    }
+
+    const hasBoth = entry.scoreA !== undefined && entry.scoreB !== undefined;
+    if (hasBoth) {
+      // Complete prediction — safe to persist.
+      merged[gmId] = { scoreA: entry.scoreA, scoreB: entry.scoreB };
+    }
+    // Partial or empty (mid-edit) → leave the previously-saved value untouched.
   });
-  state.fixturePreds = clean;
-  const prevFix = (room.predictions[state.user.id].fixtures) || {};
-  appendAuditLog(room, 'fixture', diffFixturePreds(prevFix, clean));
-  room.predictions[state.user.id].fixtures = clean;
+
+  appendAuditLog(room, 'fixture', diffFixturePreds(prevFix, merged));
+  room.predictions[state.user.id].fixtures = merged;
   state.room = room;
   await putRoom(room);
   if (!silent) toast('Fixture predictions saved!', 'success');

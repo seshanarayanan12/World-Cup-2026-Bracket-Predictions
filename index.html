@@ -854,6 +854,11 @@
 <script>
 // Self-check: if after load the groups grid is empty, show a diagnostic banner.
 window.addEventListener('error', function(e){
+  // Ignore resource-load failures (img/script/link) and opaque cross-origin
+  // "Script error." with no detail — neither indicates a fault in our code.
+  if (e && e.target && e.target !== window && (e.target.tagName === 'IMG' ||
+      e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) return;
+  if ((!e.message || e.message === 'Script error.') && !e.filename && !e.lineno) return;
   var b=document.createElement('div');
   b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#ef4444;color:#fff;padding:10px;font:12px monospace;';
   b.textContent='JS error: '+e.message+' @line '+e.lineno;
@@ -1645,11 +1650,22 @@ function applyAdminUI() {
 }
 
 // Open the admin Activity Log modal (admin-gated at the button level).
-function openAuditLog() {
+async function openAuditLog() {
   if (!isAdmin()) { toast('Admins only.'); return; }
   openModal('audit-modal');
+  const listEl = document.getElementById('audit-list');
+  if (listEl) listEl.innerHTML = `<div style="padding:18px;color:var(--muted);font-size:13px;text-align:center;">Loading activity…</div>`;
+  try {
+    _auditCache = await fetchAuditLog(state.room && state.room.code, state.room);
+  } catch (e) {
+    _auditCache = [];
+  }
   renderAuditLog();
 }
+
+// Cache of the fetched audit log for the current modal session, so filter/
+// type changes re-render instantly without re-querying.
+let _auditCache = [];
 
 // ============================================================
 // PREDICTION RECOVERY — reverse the autosave-blanking bug.
@@ -1671,8 +1687,8 @@ function parseScoreStr(s) {
   return { scoreA: parseInt(m[1], 10), scoreB: parseInt(m[2], 10) };
 }
 
-function buildRecoveryPlan(room) {
-  const log = Array.isArray(room.auditLog) ? room.auditLog : [];
+function buildRecoveryPlan(room, logEntries) {
+  const log = Array.isArray(logEntries) ? logEntries : (Array.isArray(room.auditLog) ? room.auditLog : []);
   const itemIndex = buildFixtureItemIndex();
 
   // Transition scan: walk the log in chronological order. For each
@@ -1743,7 +1759,8 @@ async function openRecoveryModal() {
     `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">Analysing activity log…</div>`;
   try {
     const room = await getRoom(state.room.code);
-    const plan = buildRecoveryPlan(room);
+    const logEntries = await fetchAuditLog(state.room.code, room);
+    const plan = buildRecoveryPlan(room, logEntries);
     _recoveryPlan = plan;
     renderRecoveryPreview(plan);
   } catch (e) {
@@ -1805,7 +1822,7 @@ async function applyRecovery() {
       auditEntries.push({ item: `RECOVERY ${p.item} [${p.who}]`, from: '—', to: p.lostValue });
       restored++;
     });
-    if (auditEntries.length) appendAuditLog(room, 'fixture', auditEntries);
+    if (auditEntries.length) await appendAuditLog(room, 'fixture', auditEntries);
     state.room = room;
     await putRoom(room);
     closeModal('recovery-modal');
@@ -1825,10 +1842,11 @@ async function applyRecovery() {
 }
 
 // Render the audit log newest-first, honoring the text + type filters.
+// Reads from _auditCache, populated by openAuditLog() from the audit_log table.
 function renderAuditLog() {
   const listEl = document.getElementById('audit-list');
   if (!listEl) return;
-  const log = (state.room && Array.isArray(state.room.auditLog)) ? state.room.auditLog : [];
+  const log = Array.isArray(_auditCache) ? _auditCache : [];
   const q = (document.getElementById('audit-filter').value || '').trim().toLowerCase();
   const kind = document.getElementById('audit-kind').value || '';
   const actionEmoji = { fixture:'⚽', group:'🏆', knockout:'🥊', result:'📊' };
@@ -2072,14 +2090,15 @@ let roomChannel = null;
 
 // ============================================================
 // AUDIT LOG (admin-visible activity trail)
-// Records prediction changes and result entries into room.auditLog with
-// who / what / when. Forward-only (starts when deployed), per-save
-// granularity, capped at AUDIT_LOG_MAX (rolling trim). Stored in the room
-// JSON — no schema change. NOT tamper-proof (client-written); it's an
-// honest-activity record, not a security audit.
+// Records prediction changes and result entries to a DEDICATED Supabase
+// table (`audit_log`) — NOT inside the room JSON — so the room blob stays
+// small and fast. who / what / when, forward-only. Client-written (UI-gated),
+// consistent with how predictions are written; not a tamper-proof security log.
+//
+// Back-compat: rooms created before this change may still carry an embedded
+// `room.auditLog` array. Readers merge that legacy data with the table so no
+// history is lost during the transition.
 // ============================================================
-
-const AUDIT_LOG_MAX = 500;
 
 function fmtScorePred(p) {
   if (!p || p.scoreA == null || p.scoreB == null) return '—';
@@ -2132,21 +2151,88 @@ function diffKnockoutPreds(oldK, newK) {
   return out;
 }
 
-// Append entries to room.auditLog (creating if absent) and rolling-trim.
-function appendAuditLog(room, action, entries) {
+// Insert audit entries into the `audit_log` table. Fire-and-forget by design
+// (logging must never block or fail a save), but returns a promise so callers
+// that need the rows to land (e.g. recovery) can await it. The `room` arg is
+// kept for signature compatibility with all existing callers; we read the code
+// from it. Entries are NOT written back into the room blob anymore.
+async function appendAuditLog(room, action, entries) {
   if (!entries || !entries.length) return;
-  if (!Array.isArray(room.auditLog)) room.auditLog = [];
+  const code = room && room.code ? room.code : (state.room && state.room.code);
+  if (!code) return;
   const who = state.user ? state.user.name : 'unknown';
   const whoId = state.user ? state.user.id : '';
   const email = (isSignedIn() && authUser.email) ? authUser.email : '';
   const ts = nowInstant();
-  entries.forEach(e => {
-    room.auditLog.push({ ts, action, who, whoId, email, item: e.item, from: e.from, to: e.to });
-  });
-  if (room.auditLog.length > AUDIT_LOG_MAX) {
-    room.auditLog = room.auditLog.slice(room.auditLog.length - AUDIT_LOG_MAX);
+  const rows = entries.map(e => ({
+    room_code: code, ts, action, who, who_id: whoId, email,
+    item: e.item, val_from: e.from, val_to: e.to,
+  }));
+
+  // Local fallback / offline: also append to an in-memory mirror so the
+  // current session's viewer shows recent activity even without the table.
+  if (!Array.isArray(_auditLocalMirror[code])) _auditLocalMirror[code] = [];
+  rows.forEach(r => _auditLocalMirror[code].push(auditRowToEntry(r)));
+
+  if (!useCloud) return;
+  try {
+    const { error } = await sbClient.from('audit_log').insert(rows);
+    if (error) throw error;
+  } catch (e) {
+    // Never surface as a blocking error — logging is best-effort.
+    console.warn('audit_log insert failed (kept in local mirror):', fmtErr(e));
   }
 }
+
+// Session-local mirror of audit entries, keyed by room code. Used as an
+// offline fallback and to reflect this session's writes immediately.
+const _auditLocalMirror = {};
+
+// Normalize a DB row (val_from/val_to/who_id) to the app's entry shape
+// (from/to/whoId) used by the viewer and recovery.
+function auditRowToEntry(r) {
+  return {
+    ts: r.ts, action: r.action, who: r.who, whoId: r.who_id || r.whoId || '',
+    email: r.email || '', item: r.item, from: r.val_from ?? r.from, to: r.val_to ?? r.to,
+  };
+}
+
+// Fetch the full audit log for a room from the table, merged with any legacy
+// embedded room.auditLog and this session's local mirror. Returns entries in
+// chronological order (oldest first), de-duplicated.
+async function fetchAuditLog(code, legacyRoom) {
+  let rows = [];
+  if (useCloud && code) {
+    try {
+      const { data, error } = await sbClient
+        .from('audit_log').select('*')
+        .eq('room_code', code)
+        .order('ts', { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      rows = (data || []).map(auditRowToEntry);
+    } catch (e) {
+      console.warn('fetchAuditLog failed, using local/legacy only:', fmtErr(e));
+    }
+  }
+  // Merge legacy embedded log (old rooms) + session mirror.
+  const legacy = (legacyRoom && Array.isArray(legacyRoom.auditLog)) ? legacyRoom.auditLog : [];
+  const mirror = _auditLocalMirror[code] || [];
+  const all = [...legacy, ...rows, ...mirror];
+
+  // De-dupe on a stable signature (ts+whoId+item+to).
+  const seen = new Set();
+  const merged = [];
+  all.forEach(e => {
+    const sig = `${e.ts}|${e.whoId}|${e.item}|${e.to}`;
+    if (seen.has(sig)) return;
+    seen.add(sig);
+    merged.push(e);
+  });
+  merged.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return merged;
+}
+
 
 function subscribeToRoom(code) {
   if (!useCloud || !code) return;
@@ -3850,14 +3936,39 @@ function toggleMobileMenu() {
 // ============================================================
 
 function showFatalError(msg) {
+  // Avoid stacking multiple banners.
+  if (document.getElementById('fatal-error-banner')) return;
   const banner = document.createElement('div');
+  banner.id = 'fatal-error-banner';
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#ef4444;color:#fff;padding:12px 16px;font-size:13px;font-family:system-ui;';
   banner.textContent = 'App error: ' + msg + ' — please screenshot and report.';
   document.body.insertBefore(banner, document.body.firstChild);
 }
 
 window.addEventListener('error', function(e) {
-  showFatalError(e.message + ' (line ' + e.lineno + ')');
+  // Ignore resource-load errors (img/script/link failing to load) — these
+  // fire on the element, not as script exceptions, and are non-fatal.
+  if (e && e.target && e.target !== window && (e.target.tagName === 'IMG' ||
+      e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+    console.warn('Resource failed to load:', e.target.src || e.target.href);
+    return;
+  }
+  // Ignore the browser's opaque cross-origin "Script error." with no detail.
+  // This is emitted for errors inside cross-origin CDN scripts and carries no
+  // line/column/message — it is not an error in our own app code and must not
+  // trigger a fatal banner.
+  if ((!e.message || e.message === 'Script error.') && !e.filename && !e.lineno) {
+    console.warn('Ignored opaque cross-origin script error (non-fatal).');
+    return;
+  }
+  showFatalError(e.message + (e.lineno ? ' (line ' + e.lineno + ')' : ''));
+});
+
+// Unhandled promise rejections (e.g. a background audit insert failing) must
+// never crash the app. Log them; do not show the fatal banner.
+window.addEventListener('unhandledrejection', function(e) {
+  console.warn('Unhandled promise rejection (non-fatal):', e.reason);
+  e.preventDefault();
 });
 
 async function init() {

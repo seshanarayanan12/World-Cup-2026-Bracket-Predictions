@@ -997,32 +997,47 @@ const THIRD_SLOTS = [
   { slot: 'T8', from: ['B','F','K','L'] },
 ];
 
+// ---------------------------------------------------------------------------
+// ROUND OF 32 — FIFA 2026 official bracket (group-position slots = canonical;
+// `teamA`/`teamB` carry the CONFIRMED qualified team keys so matchups show real
+// teams immediately and feed the auto-populating tree below).
+//
+// Slot tokens (`1X` winner, `2X` runner-up, `3X` best third from group X) are
+// kept as `a`/`b` so result-resolution and standings-derivation still resolve
+// correctly. Third-place assignments follow FIFA Annex C combination row for
+// the eight thirds that qualified: B,D,E,F,I,J,K,L
+//   1A<-3E  1B<-3J  1D<-3B  1E<-3D  1G<-3I  1I<-3F  1K<-3L  1L<-3K
+// Team keys must match TEAMS keys exactly (e.g. 'Bosnia', 'Cape Verde', 'USA').
+// ---------------------------------------------------------------------------
 const R32_FIXTURES = [
-  { id: 'r32_1',  a: '1A', b: '3-T1', label: 'Match 73', date: '2026-06-28' },
-  { id: 'r32_2',  a: '1C', b: '2F',   label: 'Match 74', date: '2026-06-28' },
-  { id: 'r32_3',  a: '1E', b: '3-T3', label: 'Match 75', date: '2026-06-29' },
-  { id: 'r32_4',  a: '1F', b: '2C',   label: 'Match 76', date: '2026-06-29' },
-  { id: 'r32_5',  a: '1B', b: '3-T2', label: 'Match 77', date: '2026-06-29' },
-  { id: 'r32_6',  a: '1I', b: '3-T5', label: 'Match 78', date: '2026-06-30' },
-  { id: 'r32_7',  a: '1D', b: '2E',   label: 'Match 79', date: '2026-06-30' },
-  { id: 'r32_8',  a: '1G', b: '3-T4', label: 'Match 80', date: '2026-06-30' },
-  { id: 'r32_9',  a: '2A', b: '2B',   label: 'Match 81', date: '2026-07-01' },
-  { id: 'r32_10', a: '1L', b: '3-T8', label: 'Match 82', date: '2026-07-01' },
-  { id: 'r32_11', a: '1J', b: '2H',   label: 'Match 83', date: '2026-07-01' },
-  { id: 'r32_12', a: '1H', b: '2J',   label: 'Match 84', date: '2026-07-02' },
-  { id: 'r32_13', a: '1K', b: '3-T6', label: 'Match 85', date: '2026-07-02' },
-  { id: 'r32_14', a: '2D', b: '2G',   label: 'Match 86', date: '2026-07-02' },
-  { id: 'r32_15', a: '2I', b: '2L',   label: 'Match 87', date: '2026-07-03' },
-  { id: 'r32_16', a: '2K', b: '3-T7', label: 'Match 88', date: '2026-07-03' },
+  { id: 'r32_1',  a: '2A', b: '2B', teamA: 'South Africa', teamB: 'Canada',   label: 'Match 73', date: '2026-06-28' },
+  { id: 'r32_2',  a: '1E', b: '3E', teamA: 'Germany',      teamB: 'Paraguay', label: 'Match 74', date: '2026-06-28' },
+  { id: 'r32_3',  a: '1F', b: '2C', teamA: 'Netherlands',  teamB: 'Morocco',  label: 'Match 75', date: '2026-06-29' },
+  { id: 'r32_4',  a: '1C', b: '2F', teamA: 'Brazil',       teamB: 'Japan',    label: 'Match 76', date: '2026-06-29' },
+  { id: 'r32_5',  a: '1I', b: '3I', teamA: 'France',       teamB: 'Sweden',   label: 'Match 77', date: '2026-06-30' },
+  { id: 'r32_6',  a: '2E', b: '2I', teamA: 'Ivory Coast',  teamB: 'Norway',   label: 'Match 78', date: '2026-06-30' },
+  { id: 'r32_7',  a: '1A', b: '3A', teamA: 'Mexico',       teamB: 'Ecuador',  label: 'Match 79', date: '2026-06-30' },
+  { id: 'r32_8',  a: '1L', b: '3L', teamA: 'England',      teamB: 'DR Congo', label: 'Match 80', date: '2026-07-01' },
+  { id: 'r32_9',  a: '1D', b: '3D', teamA: 'USA',          teamB: 'Bosnia',   label: 'Match 81', date: '2026-07-01' },
+  { id: 'r32_10', a: '1G', b: '3G', teamA: 'Belgium',      teamB: 'Senegal',  label: 'Match 82', date: '2026-07-01' },
+  { id: 'r32_11', a: '2K', b: '2L', teamA: 'Portugal',     teamB: 'Croatia',  label: 'Match 83', date: '2026-07-02' },
+  { id: 'r32_12', a: '1H', b: '2J', teamA: 'Spain',        teamB: 'Austria',  label: 'Match 84', date: '2026-07-02' },
+  { id: 'r32_13', a: '1B', b: '3B', teamA: 'Switzerland',  teamB: 'Algeria',  label: 'Match 85', date: '2026-07-02' },
+  { id: 'r32_14', a: '1J', b: '2H', teamA: 'Argentina',    teamB: 'Cape Verde', label: 'Match 86', date: '2026-07-03' },
+  { id: 'r32_15', a: '1K', b: '3K', teamA: 'Colombia',     teamB: 'Ghana',    label: 'Match 87', date: '2026-07-03' },
+  { id: 'r32_16', a: '2D', b: '2G', teamA: 'Australia',    teamB: 'Egypt',    label: 'Match 88', date: '2026-07-03' },
 ];
 
+// ROUND OF 16 — FIFA official connectivity (NOT sequential winner pairs).
+//   M89=W74/W77  M90=W73/W75  M91=W76/W78  M92=W79/W80
+//   M93=W83/W84  M94=W81/W82  M95=W85/W86  M96=W87/W88
 const R16_FIXTURES = [
-  { id: 'r16_1', a: 'W-r32_1',  b: 'W-r32_2',  label: 'Match 89', date: '2026-07-04' },
-  { id: 'r16_2', a: 'W-r32_3',  b: 'W-r32_4',  label: 'Match 90', date: '2026-07-04' },
-  { id: 'r16_3', a: 'W-r32_5',  b: 'W-r32_6',  label: 'Match 91', date: '2026-07-05' },
+  { id: 'r16_1', a: 'W-r32_2',  b: 'W-r32_5',  label: 'Match 89', date: '2026-07-04' },
+  { id: 'r16_2', a: 'W-r32_1',  b: 'W-r32_3',  label: 'Match 90', date: '2026-07-04' },
+  { id: 'r16_3', a: 'W-r32_4',  b: 'W-r32_6',  label: 'Match 91', date: '2026-07-05' },
   { id: 'r16_4', a: 'W-r32_7',  b: 'W-r32_8',  label: 'Match 92', date: '2026-07-05' },
-  { id: 'r16_5', a: 'W-r32_9',  b: 'W-r32_10', label: 'Match 93', date: '2026-07-06' },
-  { id: 'r16_6', a: 'W-r32_11', b: 'W-r32_12', label: 'Match 94', date: '2026-07-06' },
+  { id: 'r16_5', a: 'W-r32_11', b: 'W-r32_12', label: 'Match 93', date: '2026-07-06' },
+  { id: 'r16_6', a: 'W-r32_9',  b: 'W-r32_10', label: 'Match 94', date: '2026-07-06' },
   { id: 'r16_7', a: 'W-r32_13', b: 'W-r32_14', label: 'Match 95', date: '2026-07-07' },
   { id: 'r16_8', a: 'W-r32_15', b: 'W-r32_16', label: 'Match 96', date: '2026-07-07' },
 ];
@@ -2254,8 +2269,8 @@ function subscribeToRoom(code) {
               const allFx = [...R32_FIXTURES,...R16_FIXTURES,...QF_FIXTURES,...SF_FIXTURES,...FINAL_FIXTURES];
               const fx = allFx.find(f => f.id === k);
               if (fx && r.winner) {
-                const ta = getTeamForSlotFromRoom(fx.a, fresh);
-                const tb = getTeamForSlotFromRoom(fx.b, fresh);
+                const ta = getTeamForFixtureSideFromRoom(fx, 'a', fresh);
+                const tb = getTeamForFixtureSideFromRoom(fx, 'b', fresh);
                 const nameA = ta ? ta.name : fx.a;
                 const nameB = tb ? tb.name : fx.b;
                 const scoreStr = (r.scoreA !== undefined && r.scoreB !== undefined) ? ` ${r.scoreA}–${r.scoreB}` : '';
@@ -2367,8 +2382,8 @@ function buildAllFixtures() {
   ];
   koRounds.forEach(([roundName, fixtures]) => {
     fixtures.forEach(f => {
-      const ta = getTeamForSlot(f.a);
-      const tb = getTeamForSlot(f.b);
+      const ta = getTeamForFixtureSide(f, 'a');
+      const tb = getTeamForFixtureSide(f, 'b');
       list.push({
         kind: 'knockout',
         label: roundName,
@@ -3019,13 +3034,24 @@ function getTeamForSlot(slot) {
     }
     return null;
   }
-  // Third-place slot, e.g. "3-T1" — resolved from a global assignment that
-  // places each chosen third-place team into exactly one slot (no duplicates).
+  // Legacy third-place slot, e.g. "3-T1" — resolved from a global assignment
+  // that places each chosen third-place team into exactly one slot.
   if (slot.startsWith('3-')) {
     const slotId = slot.slice(2); // e.g. 'T1'
     const assignment = resolveThirdPlaceAssignment();
     const key = assignment[slotId];
     if (key) {
+      const t = TEAMS[key];
+      return t ? { key, ...t } : null;
+    }
+    return null;
+  }
+  // New best-third slot "3X" = third-placed team from group X. Resolved from
+  // derived standings if available; otherwise unresolved (shows label).
+  if (slot[0] === '3' && slot.length === 2) {
+    const group = slot[1];
+    if (typeof state !== 'undefined' && state.groupPreds && state.groupPreds[group] && state.groupPreds[group].third) {
+      const key = state.groupPreds[group].third;
       const t = TEAMS[key];
       return t ? { key, ...t } : null;
     }
@@ -3045,9 +3071,33 @@ function getTeamForSlot(slot) {
   return null;
 }
 
+// Resolve the team on one side of a fixture. Priority:
+//   1. Explicit confirmed team key on R32 fixtures (real qualified teams)
+//   2. For W-xxx slots: the ACTUAL winner from room.results (auto-populates
+//      R16/QF/SF/Final as results are entered) — applies in every mode
+//   3. Otherwise slot resolution from the viewer's predictions
+function getTeamForFixtureSide(fixture, side) {
+  const explicit = side === 'a' ? fixture.teamA : fixture.teamB;
+  if (explicit && TEAMS[explicit]) return { key: explicit, ...TEAMS[explicit] };
+  const slot = side === 'a' ? fixture.a : fixture.b;
+  if (slot && slot.startsWith('W-') && state.room) {
+    const fromResult = getTeamForSlotFromRoom(slot, state.room);
+    if (fromResult) return fromResult;
+  }
+  return getTeamForSlot(slot);
+}
+
+// Same as getTeamForFixtureSide but resolves W-xxx slots from a room's ACTUAL
+// results rather than the viewer's predictions (used for auto-population).
+function getTeamForFixtureSideFromRoom(fixture, side, room) {
+  const explicit = side === 'a' ? fixture.teamA : fixture.teamB;
+  if (explicit && TEAMS[explicit]) return { key: explicit, ...TEAMS[explicit] };
+  const slot = side === 'a' ? fixture.a : fixture.b;
+  return getTeamForSlotFromRoom(slot, room);
+}
+
 // Resolve a knockout slot to its ACTUAL team from a room's results (not the
-// user's predictions). Used by realtime toasts to name teams in W-xxx slots.
-// Falls back to getTeamForSlot for non-winner slots.
+// user's predictions). Falls back to getTeamForSlot for non-winner slots.
 function getTeamForSlotFromRoom(slot, room) {
   if (slot && slot.startsWith('W-')) {
     const matchId = slot.slice(2);
@@ -3065,6 +3115,7 @@ function getTeamForSlotFromRoom(slot, room) {
 function slotLabel(slot) {
   if (slot.startsWith('W-')) return 'Winner ' + slot.slice(2).toUpperCase().replace('_', ' ');
   if (slot.startsWith('3-')) return '3rd place';
+  if (slot[0] === '3' && slot.length === 2) return '3rd place';
   if (slot[0] === '1') return 'Winner Grp ' + slot[1];
   if (slot[0] === '2') return 'Runner-up Grp ' + slot[1];
   return slot;
@@ -3086,8 +3137,8 @@ function renderBracketSection(fixtures, containerId, roundKey) {
 
   fixtures.forEach(fixture => {
     const pred = state.knockoutPreds[fixture.id] || {};
-    const teamA = getTeamForSlot(fixture.a);
-    const teamB = getTeamForSlot(fixture.b);
+    const teamA = getTeamForFixtureSide(fixture, 'a');
+    const teamB = getTeamForFixtureSide(fixture, 'b');
     const winner = pred.winner;
 
     const teamAClass = winner === (teamA && teamA.key) ? 'match-team winner' :
@@ -3178,8 +3229,8 @@ function openMatchModal(matchId) {
     return;
   }
 
-  const teamA = getTeamForSlot(fixture.a);
-  const teamB = getTeamForSlot(fixture.b);
+  const teamA = getTeamForFixtureSide(fixture, 'a');
+  const teamB = getTeamForFixtureSide(fixture, 'b');
   const pred = state.knockoutPreds[matchId] || {};
 
   if (!teamA || !teamB) {
@@ -3475,8 +3526,8 @@ function updateResultMatchSelect(round) {
   const fixtures = map[round] || [];
   const sel = document.getElementById('result-match');
   sel.innerHTML = fixtures.map(f => {
-    const ta = getTeamForSlot(f.a);
-    const tb = getTeamForSlot(f.b);
+    const ta = getTeamForFixtureSide(f, 'a');
+    const tb = getTeamForFixtureSide(f, 'b');
     const nameA = ta ? ta.name : f.a;
     const nameB = tb ? tb.name : f.b;
     return `<option value="${f.id}">${nameA} vs ${nameB}</option>`;
@@ -3490,8 +3541,8 @@ function updateResultTeamLabels(matchId) {
   const allFixtures = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
   const fixture = allFixtures.find(f => f.id === matchId);
   if (!fixture) return;
-  const ta = getTeamForSlot(fixture.a);
-  const tb = getTeamForSlot(fixture.b);
+  const ta = getTeamForFixtureSide(fixture, 'a');
+  const tb = getTeamForFixtureSide(fixture, 'b');
   document.getElementById('result-label-a').textContent = ta ? ta.name : 'Team A';
   document.getElementById('result-label-b').textContent = tb ? tb.name : 'Team B';
   document.getElementById('result-winner-a').textContent = (ta ? ta.name : 'Team A') + ' wins (ET/Pens)';
@@ -3553,8 +3604,8 @@ async function submitResult() {
   const fixture = allFixtures.find(f => f.id === matchId);
   if (!fixture) return;
 
-  const ta = getTeamForSlot(fixture.a);
-  const tb = getTeamForSlot(fixture.b);
+  const ta = getTeamForFixtureSide(fixture, 'a');
+  const tb = getTeamForFixtureSide(fixture, 'b');
 
   let winner = null;
   if (winnerSide === 'a' && ta) winner = ta.key;
@@ -3746,8 +3797,8 @@ async function buildSyncDiff() {
     }
     // Match to our fixture by finding one whose resolved slots equal these teams
     const fixture = allKoFixtures.find(f => {
-      const ta = getTeamForSlot(f.a);
-      const tb = getTeamForSlot(f.b);
+      const ta = getTeamForFixtureSide(f, 'a');
+      const tb = getTeamForFixtureSide(f, 'b');
       return (ta && ta.key === homeKey && tb && tb.key === awayKey) ||
              (ta && ta.key === awayKey && tb && tb.key === homeKey);
     });
@@ -3755,8 +3806,8 @@ async function buildSyncDiff() {
       // Teams may not be resolvable yet if prior round results aren't in — skip silently
       return;
     }
-    const ta = getTeamForSlot(fixture.a);
-    const tb = getTeamForSlot(fixture.b);
+    const ta = getTeamForFixtureSide(fixture, 'a');
+    const tb = getTeamForFixtureSide(fixture, 'b');
     const flipped = (ta && ta.key === awayKey);
     const scoreA = flipped ? m.score.fullTime.away : m.score.fullTime.home;
     const scoreB = flipped ? m.score.fullTime.home : m.score.fullTime.away;

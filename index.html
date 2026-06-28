@@ -146,6 +146,8 @@
   .fx-adv-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--text); }
   .fx-adv-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
   .fx-adv-btn:disabled { opacity: 0.5; cursor: default; }
+  .fx-adv-auto-on .fx-adv-btn.active:disabled { opacity: 1; }
+  .fx-adv-auto { font-size: 10px; color: var(--muted); font-style: italic; }
   .fx-row.locked { opacity: 0.55; }
   .fx-row.locked .fx-score-in { background: rgba(255,255,255,0.03); cursor: not-allowed; }
   .fx-md-lock { float: right; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
@@ -2568,17 +2570,25 @@ function renderFixtures() {
         resultLine = `<div class="fx-ko-hint">Pick the score and who advances · winner +${KO_FIXTURE_WINNER_PTS}, exact score +${KO_FIXTURE_EXACT_PTS}</div>`;
       }
       const disabled = (res || koLock.locked) ? 'disabled' : '';
-      const advDisabled = (res || koLock.locked);
+      // Manual Advances picking is only meaningful for a draw or incomplete
+      // score. A decisive score auto-derives the advancer, so the buttons are
+      // shown (highlighted) but locked — you can't pick the losing side.
+      const scoreDecisive = (pa !== '' && pb !== '' && pa !== pb);
+      const advDisabled = (res || koLock.locked || scoreDecisive);
       // Advance toggle — two team buttons. Hidden once a result is in.
       let advBlock = '';
       if (!res) {
+        const advHint = scoreDecisive
+          ? '<span class="fx-adv-auto">(from score)</span>'
+          : '<span class="fx-adv-auto">(draw → pick winner)</span>';
         advBlock = `
-          <div class="fx-adv">
+          <div class="fx-adv${scoreDecisive ? ' fx-adv-auto-on' : ''}">
             <span class="fx-adv-label">Advances:</span>
             <button class="fx-adv-btn ${advSide === 'a' ? 'active' : ''}" ${advDisabled ? 'disabled' : ''}
               onclick="setKoAdvance('${f.koId}','a')">${f.teamAName}</button>
             <button class="fx-adv-btn ${advSide === 'b' ? 'active' : ''}" ${advDisabled ? 'disabled' : ''}
               onclick="setKoAdvance('${f.koId}','b')">${f.teamBName}</button>
+            ${advHint}
           </div>`;
       }
       html += `
@@ -2694,16 +2704,22 @@ function onKoFixtureInput(koId) {
   saveState();
   scheduleFixtureAutosave();
   // Update the Advances toggle highlight WITHOUT re-rendering (which would steal
-  // focus from the number input mid-type).
-  if (entry.winner) {
-    const wrap = document.getElementById('fx-' + koId + '-a');
-    const row = wrap ? wrap.closest('.fx-row-ko') : null;
-    if (row) {
-      const btns = row.querySelectorAll('.fx-adv-btn');
-      btns.forEach((btn, i) => {
-        btn.classList.toggle('active', (i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
-      });
-    }
+  // focus from the number input mid-type). Also enable/disable the buttons:
+  // decisive score → locked (auto-derived); draw/incomplete → manual pick.
+  const wrap = document.getElementById('fx-' + koId + '-a');
+  const row = wrap ? wrap.closest('.fx-row-ko') : null;
+  if (row) {
+    const decisive = entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB;
+    const advWrap = row.querySelector('.fx-adv');
+    if (advWrap) advWrap.classList.toggle('fx-adv-auto-on', decisive);
+    const hint = row.querySelector('.fx-adv-auto');
+    if (hint) hint.textContent = decisive ? '(from score)' : '(draw → pick winner)';
+    const btns = row.querySelectorAll('.fx-adv-btn');
+    btns.forEach((btn, i) => {
+      btn.disabled = decisive;
+      const isWinner = entry.winner && ((i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
+      btn.classList.toggle('active', !!isWinner);
+    });
   }
 }
 
@@ -2723,6 +2739,11 @@ function setKoAdvance(koId, side) {
     }
   }
   const entry = Object.assign({}, state.fixturePreds[koId] || {});
+  // Guard: a decisive score determines the advancer. Manual picking is only
+  // for draws / incomplete scores. Ignore stray clicks on a decisive score.
+  if (entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB) {
+    return;
+  }
   entry.winner = side;
   state.fixturePreds[koId] = entry;
   saveState();

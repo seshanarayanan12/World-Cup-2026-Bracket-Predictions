@@ -140,6 +140,12 @@
   .fx-ko-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .fx-ko-badge { display: inline-block; font-size: 10px; font-weight: 600; color: var(--gold); background: var(--gold-dim); border-radius: 4px; padding: 1px 7px; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.4px; }
   .fx-row-ko .fx-side-name { font-weight: 600; }
+  .fx-adv { flex-basis: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .fx-adv-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .fx-adv-btn { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border-bright); border-radius: 6px; padding: 5px 12px; cursor: pointer; transition: all 0.15s; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fx-adv-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--text); }
+  .fx-adv-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+  .fx-adv-btn:disabled { opacity: 0.5; cursor: default; }
   .fx-row.locked { opacity: 0.55; }
   .fx-row.locked .fx-score-in { background: rgba(255,255,255,0.03); cursor: not-allowed; }
   .fx-md-lock { float: right; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
@@ -2533,25 +2539,48 @@ function renderFixtures() {
           ${resultLine ? `<div class="fx-vs-foot">${resultLine}</div>` : ''}
         </div>`;
     } else if (isFixtureMode && f.kind === 'knockout' && f.koScorable) {
-      // Knockout match in Fixture Mode: same scoreline-prediction card, but
-      // gated by the KO lock (open until kickoff) and scored with stacking
-      // (winner +5, exact scoreline +3).
+      // Knockout match in Fixture Mode: scoreline-prediction card PLUS an
+      // "Advances" pick (who goes through). Gated by the KO lock (open until
+      // kickoff). Scored with stacking: correct advancer +5, exact 90-min
+      // score +3.
       const koLock = koFixtureLockState({ ist: f.ist }, now);
       const pred = state.fixturePreds[f.koId] || {};
       const res = results[f.koId]; // KO results stored under the fixture id
       const pa = pred.scoreA ?? '';
       const pb = pred.scoreB ?? '';
+      // Which side the user thinks advances. Explicit pred.winner wins;
+      // otherwise derive from a decisive predicted score.
+      let advSide = pred.winner || null;
+      if (!advSide && pa !== '' && pb !== '') {
+        advSide = (pa > pb) ? 'a' : (pb > pa) ? 'b' : null;
+      }
       let resultLine = '';
       if (res && res.scoreA !== undefined && res.scoreB !== undefined) {
         const enriched = Object.assign({}, res, { _teamAKey: f.teamAKey });
         const pts = koFixturePoints(pred, enriched);
-        resultLine = `<div class="fx-result">Result ${res.scoreA}–${res.scoreB} · you scored <b>${pts}</b> pt${pts===1?'':'s'}</div>`;
+        const advName = res.winner && TEAMS[res.winner] ? TEAMS[res.winner].name : '—';
+        const decoded = res.duration === 'PENALTY_SHOOTOUT' ? ' (pens)'
+                      : res.duration === 'EXTRA_TIME' ? ' (a.e.t.)' : '';
+        resultLine = `<div class="fx-result">Result ${res.scoreA}–${res.scoreB}${decoded} · ${advName} advance · you scored <b>${pts}</b> pt${pts===1?'':'s'}</div>`;
       } else if (koLock.locked) {
         resultLine = `<div class="fx-lock-note">🔒 Predictions locked — this match has kicked off</div>`;
       } else {
-        resultLine = `<div class="fx-ko-hint">Knockout: correct winner +${KO_FIXTURE_WINNER_PTS}, exact score +${KO_FIXTURE_EXACT_PTS}</div>`;
+        resultLine = `<div class="fx-ko-hint">Pick the score and who advances · winner +${KO_FIXTURE_WINNER_PTS}, exact score +${KO_FIXTURE_EXACT_PTS}</div>`;
       }
       const disabled = (res || koLock.locked) ? 'disabled' : '';
+      const advDisabled = (res || koLock.locked);
+      // Advance toggle — two team buttons. Hidden once a result is in.
+      let advBlock = '';
+      if (!res) {
+        advBlock = `
+          <div class="fx-adv">
+            <span class="fx-adv-label">Advances:</span>
+            <button class="fx-adv-btn ${advSide === 'a' ? 'active' : ''}" ${advDisabled ? 'disabled' : ''}
+              onclick="setKoAdvance('${f.koId}','a')">${f.teamAName}</button>
+            <button class="fx-adv-btn ${advSide === 'b' ? 'active' : ''}" ${advDisabled ? 'disabled' : ''}
+              onclick="setKoAdvance('${f.koId}','b')">${f.teamBName}</button>
+          </div>`;
+      }
       html += `
         <div class="fx-row fx-row-vs fx-row-ko ${res ? 'done' : ''} ${koLock.locked && !res ? 'locked' : ''}">
           ${timeBlock}
@@ -2572,6 +2601,7 @@ function renderFixtures() {
               <span class="fx-side-name">${f.teamBName}</span>
             </div>
           </div>
+          ${advBlock}
           <div class="fx-vs-foot"><span class="fx-ko-badge">${f.venue}</span>${resultLine}</div>
         </div>`;
     } else {
@@ -2628,7 +2658,9 @@ function onFixtureInput(gmId) {
 
 // Live-capture a KNOCKOUT fixture scoreline (Fixture Mode). Stored in the same
 // fixturePreds map but keyed by the fixture id (e.g. 'r32_1'). Gated by the KO
-// lock (open until kickoff).
+// lock (open until kickoff). Also maintains the `winner` (who advances) field:
+// a decisive score sets it to the leading side; a draw leaves whatever the user
+// picked via the Advances toggle.
 function onKoFixtureInput(koId) {
   if (!state.fixturePreds) state.fixturePreds = {};
   const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
@@ -2646,12 +2678,63 @@ function onKoFixtureInput(koId) {
   }
   const a = document.getElementById('fx-' + koId + '-a').value;
   const b = document.getElementById('fx-' + koId + '-b').value;
+  const prev = state.fixturePreds[koId] || {};
   const entry = {};
   if (a !== '') entry.scoreA = parseInt(a);
   if (b !== '') entry.scoreB = parseInt(b);
+  // Maintain advance pick:
+  if (entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB) {
+    // Decisive score → the leading team advances. Override any stale pick.
+    entry.winner = entry.scoreA > entry.scoreB ? 'a' : 'b';
+  } else if (prev.winner) {
+    // Draw or incomplete score → keep the user's explicit Advances pick.
+    entry.winner = prev.winner;
+  }
   state.fixturePreds[koId] = entry;
   saveState();
   scheduleFixtureAutosave();
+  // Update the Advances toggle highlight WITHOUT re-rendering (which would steal
+  // focus from the number input mid-type).
+  if (entry.winner) {
+    const wrap = document.getElementById('fx-' + koId + '-a');
+    const row = wrap ? wrap.closest('.fx-row-ko') : null;
+    if (row) {
+      const btns = row.querySelectorAll('.fx-adv-btn');
+      btns.forEach((btn, i) => {
+        btn.classList.toggle('active', (i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
+      });
+    }
+  }
+}
+
+// Explicit "Advances" toggle for a knockout match (who goes through). Sets the
+// winner side; if the current score is a draw this is the only way to express
+// who wins the tie (ET/penalties).
+function setKoAdvance(koId, side) {
+  if (!state.fixturePreds) state.fixturePreds = {};
+  const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+    .find(x => x.id === koId);
+  if (fx) {
+    const lock = koFixtureLockState({ ist: fx.ist });
+    const res = state.room && state.room.results && state.room.results[koId];
+    if (lock.locked && !res) {
+      toast('This match is locked — kickoff has passed.', 'info');
+      return;
+    }
+  }
+  const entry = Object.assign({}, state.fixturePreds[koId] || {});
+  entry.winner = side;
+  state.fixturePreds[koId] = entry;
+  saveState();
+  scheduleFixtureAutosave();
+  // Update just this row's toggle highlight (no full re-render).
+  const aEl = document.getElementById('fx-' + koId + '-a');
+  const row = aEl ? aEl.closest('.fx-row-ko') : null;
+  if (row) {
+    row.querySelectorAll('.fx-adv-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', (i === 0 && side === 'a') || (i === 1 && side === 'b'));
+    });
+  }
 }
 function clearFixturePrediction(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};
@@ -2793,8 +2876,15 @@ async function saveFixturePredictions(opts = {}) {
       // Never modify a locked KO match unless a result already exists.
       if (koLock.locked && !koRes) return;
       if (entry._cleared) { delete merged[predId]; return; }
+      // Score and advance-pick are independent rewards (+3 / +5). Persist
+      // whichever is present so a user can pick a winner without a full score,
+      // or a score without having touched the toggle (winner auto-derives).
       const bothKo = entry.scoreA !== undefined && entry.scoreB !== undefined;
-      if (bothKo) merged[predId] = { scoreA: entry.scoreA, scoreB: entry.scoreB };
+      const out = Object.assign({}, merged[predId]); // start from previously saved
+      if (bothKo) { out.scoreA = entry.scoreA; out.scoreB = entry.scoreB; }
+      if (entry.winner === 'a' || entry.winner === 'b') { out.winner = entry.winner; }
+      // Only write if we actually have something to save.
+      if (out.scoreA !== undefined || out.winner !== undefined) merged[predId] = out;
       return;
     }
 
@@ -3973,8 +4063,25 @@ async function buildSyncDiff() {
     const ta = getTeamForFixtureSide(fixture, 'a');
     const tb = getTeamForFixtureSide(fixture, 'b');
     const flipped = (ta && ta.key === awayKey);
-    const scoreA = flipped ? m.score.fullTime.away : m.score.fullTime.home;
-    const scoreB = flipped ? m.score.fullTime.home : m.score.fullTime.away;
+    // IMPORTANT: in v4, score.fullTime is the RUNNING total — for ET/penalty
+    // matches it includes extra-time goals (and rolls in the shootout), NOT the
+    // 90-minute score. The 90-minute score lives in score.regularTime. We score
+    // the exact-scoreline bonus on the 90-minute score, so prefer regularTime
+    // when present (it only appears for ET/pens finishes).
+    const duration = (m.score && m.score.duration) || 'REGULAR';
+    const reg = m.score && m.score.regularTime;
+    const has90 = reg && reg.home !== null && reg.home !== undefined
+                      && reg.away !== null && reg.away !== undefined;
+    const baseHome = has90 ? reg.home : m.score.fullTime.home;
+    const baseAway = has90 ? reg.away : m.score.fullTime.away;
+    const scoreA = flipped ? baseAway : baseHome;
+    const scoreB = flipped ? baseHome : baseAway;
+    // The final/full-time score (after ET, excluding the shootout tally) for
+    // display only — lets the UI show "1–1 (4–2 pens)" style annotations.
+    const ftHome = (m.score && m.score.fullTime && m.score.fullTime.home != null) ? m.score.fullTime.home : null;
+    const ftAway = (m.score && m.score.fullTime && m.score.fullTime.away != null) ? m.score.fullTime.away : null;
+    const fullA = ftHome === null ? null : (flipped ? ftAway : ftHome);
+    const fullB = ftHome === null ? null : (flipped ? ftHome : ftAway);
     // Determine winner (accounts for ET/pens: score.winner is HOME_TEAM/AWAY_TEAM)
     let winner = null;
     if (m.score.winner === 'HOME_TEAM') winner = homeKey;
@@ -3985,6 +4092,8 @@ async function buildSyncDiff() {
       resKey: fixture.id,
       label: `${homeKey} vs ${awayKey} (${roundKey.toUpperCase()})`,
       scoreA, scoreB, winner,
+      // Display/metadata: how the tie was decided + final-time score.
+      duration, fullA, fullB,
       type: 'knockout', roundKey, fixtureId: fixture.id,
     };
     if (existing[fixture.id] !== undefined) alreadyDone.push(entry);
@@ -4105,7 +4214,12 @@ async function applySyncResults() {
         room.results[e.resKey] = { first: e.first, second: e.second, third: e.third || null, timestamp: Date.now() };
       } else if (e.type === 'knockout') {
         appendAuditLog(room, 'result', [{ item: `Sync ${e.fixtureId}`, from: '—', to: `${e.scoreA}-${e.scoreB}` }]);
-        room.results[e.resKey] = { scoreA: e.scoreA, scoreB: e.scoreB, winner: e.winner, timestamp: Date.now() };
+        room.results[e.resKey] = {
+          scoreA: e.scoreA, scoreB: e.scoreB, winner: e.winner,
+          duration: e.duration || 'REGULAR',
+          fullA: (e.fullA ?? null), fullB: (e.fullB ?? null),
+          timestamp: Date.now(),
+        };
       }
       written++;
     }

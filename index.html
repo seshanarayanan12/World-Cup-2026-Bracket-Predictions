@@ -137,6 +137,9 @@
   .fx-vs-foot .fx-result, .fx-vs-foot .fx-lock-note { margin-top: 0; }
   .fx-result { font-size: 11px; color: var(--gold); margin-top: 2px; }
   .fx-lock-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .fx-ko-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .fx-ko-badge { display: inline-block; font-size: 10px; font-weight: 600; color: var(--gold); background: var(--gold-dim); border-radius: 4px; padding: 1px 7px; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .fx-row-ko .fx-side-name { font-weight: 600; }
   .fx-row.locked { opacity: 0.55; }
   .fx-row.locked .fx-score-in { background: rgba(255,255,255,0.03); cursor: not-allowed; }
   .fx-md-lock { float: right; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
@@ -1010,22 +1013,22 @@ const THIRD_SLOTS = [
 // Team keys must match TEAMS keys exactly (e.g. 'Bosnia', 'Cape Verde', 'USA').
 // ---------------------------------------------------------------------------
 const R32_FIXTURES = [
-  { id: 'r32_1',  a: '2A', b: '2B', teamA: 'South Africa', teamB: 'Canada',   label: 'Match 73', date: '2026-06-28' },
-  { id: 'r32_2',  a: '1E', b: '3E', teamA: 'Germany',      teamB: 'Paraguay', label: 'Match 74', date: '2026-06-28' },
-  { id: 'r32_3',  a: '1F', b: '2C', teamA: 'Netherlands',  teamB: 'Morocco',  label: 'Match 75', date: '2026-06-29' },
-  { id: 'r32_4',  a: '1C', b: '2F', teamA: 'Brazil',       teamB: 'Japan',    label: 'Match 76', date: '2026-06-29' },
-  { id: 'r32_5',  a: '1I', b: '3I', teamA: 'France',       teamB: 'Sweden',   label: 'Match 77', date: '2026-06-30' },
-  { id: 'r32_6',  a: '2E', b: '2I', teamA: 'Ivory Coast',  teamB: 'Norway',   label: 'Match 78', date: '2026-06-30' },
-  { id: 'r32_7',  a: '1A', b: '3A', teamA: 'Mexico',       teamB: 'Ecuador',  label: 'Match 79', date: '2026-06-30' },
-  { id: 'r32_8',  a: '1L', b: '3L', teamA: 'England',      teamB: 'DR Congo', label: 'Match 80', date: '2026-07-01' },
-  { id: 'r32_9',  a: '1D', b: '3D', teamA: 'USA',          teamB: 'Bosnia',   label: 'Match 81', date: '2026-07-01' },
-  { id: 'r32_10', a: '1G', b: '3G', teamA: 'Belgium',      teamB: 'Senegal',  label: 'Match 82', date: '2026-07-01' },
-  { id: 'r32_11', a: '2K', b: '2L', teamA: 'Portugal',     teamB: 'Croatia',  label: 'Match 83', date: '2026-07-02' },
-  { id: 'r32_12', a: '1H', b: '2J', teamA: 'Spain',        teamB: 'Austria',  label: 'Match 84', date: '2026-07-02' },
-  { id: 'r32_13', a: '1B', b: '3B', teamA: 'Switzerland',  teamB: 'Algeria',  label: 'Match 85', date: '2026-07-02' },
-  { id: 'r32_14', a: '1J', b: '2H', teamA: 'Argentina',    teamB: 'Cape Verde', label: 'Match 86', date: '2026-07-03' },
-  { id: 'r32_15', a: '1K', b: '3K', teamA: 'Colombia',     teamB: 'Ghana',    label: 'Match 87', date: '2026-07-03' },
-  { id: 'r32_16', a: '2D', b: '2G', teamA: 'Australia',    teamB: 'Egypt',    label: 'Match 88', date: '2026-07-03' },
+  { id: 'r32_1',  a: '2A', b: '2B', teamA: 'South Africa', teamB: 'Canada',   label: 'Match 73', date: '2026-06-28', ist: '2026-06-29T00:30' },
+  { id: 'r32_2',  a: '1E', b: '3E', teamA: 'Germany',      teamB: 'Paraguay', label: 'Match 74', date: '2026-06-28', ist: '2026-06-30T02:00' },
+  { id: 'r32_3',  a: '1F', b: '2C', teamA: 'Netherlands',  teamB: 'Morocco',  label: 'Match 75', date: '2026-06-29', ist: '2026-06-30T06:30' },
+  { id: 'r32_4',  a: '1C', b: '2F', teamA: 'Brazil',       teamB: 'Japan',    label: 'Match 76', date: '2026-06-29', ist: '2026-06-29T22:30' },
+  { id: 'r32_5',  a: '1I', b: '3I', teamA: 'France',       teamB: 'Sweden',   label: 'Match 77', date: '2026-06-30', ist: '2026-07-01T02:30' },
+  { id: 'r32_6',  a: '2E', b: '2I', teamA: 'Ivory Coast',  teamB: 'Norway',   label: 'Match 78', date: '2026-06-30', ist: '2026-06-30T22:30' },
+  { id: 'r32_7',  a: '1A', b: '3A', teamA: 'Mexico',       teamB: 'Ecuador',  label: 'Match 79', date: '2026-06-30', ist: '2026-07-01T06:30' },
+  { id: 'r32_8',  a: '1L', b: '3L', teamA: 'England',      teamB: 'DR Congo', label: 'Match 80', date: '2026-07-01', ist: '2026-07-01T21:30' },
+  { id: 'r32_9',  a: '1D', b: '3D', teamA: 'USA',          teamB: 'Bosnia',   label: 'Match 81', date: '2026-07-01', ist: '2026-07-02T05:30' },
+  { id: 'r32_10', a: '1G', b: '3G', teamA: 'Belgium',      teamB: 'Senegal',  label: 'Match 82', date: '2026-07-01', ist: '2026-07-02T01:30' },
+  { id: 'r32_11', a: '2K', b: '2L', teamA: 'Portugal',     teamB: 'Croatia',  label: 'Match 83', date: '2026-07-02', ist: '2026-07-03T04:30' },
+  { id: 'r32_12', a: '1H', b: '2J', teamA: 'Spain',        teamB: 'Austria',  label: 'Match 84', date: '2026-07-02', ist: '2026-07-03T00:30' },
+  { id: 'r32_13', a: '1B', b: '3B', teamA: 'Switzerland',  teamB: 'Algeria',  label: 'Match 85', date: '2026-07-02', ist: '2026-07-03T08:30' },
+  { id: 'r32_14', a: '1J', b: '2H', teamA: 'Argentina',    teamB: 'Cape Verde', label: 'Match 86', date: '2026-07-03', ist: '2026-07-04T03:30' },
+  { id: 'r32_15', a: '1K', b: '3K', teamA: 'Colombia',     teamB: 'Ghana',    label: 'Match 87', date: '2026-07-03', ist: '2026-07-04T07:00' },
+  { id: 'r32_16', a: '2D', b: '2G', teamA: 'Australia',    teamB: 'Egypt',    label: 'Match 88', date: '2026-07-03', ist: '2026-07-03T23:30' },
 ];
 
 // ROUND OF 16 — FIFA official connectivity (NOT sequential winner pairs).
@@ -1064,6 +1067,10 @@ const MAX_THIRD = 8;
 // Fixture Mode scoring: exact scoreline = 3, correct outcome (W/D/L) only = 1
 const FIXTURE_EXACT_PTS = 3;
 const FIXTURE_OUTCOME_PTS = 1;
+// Knockout Fixture-Mode scoring STACKS: correct winner (who advances) = 5,
+// plus an extra 3 if the 90-minute scoreline is also exact (max 8 per match).
+const KO_FIXTURE_WINNER_PTS = 5;
+const KO_FIXTURE_EXACT_PTS = 3;
 
 // Current room's game mode ('bracket' default, or 'fixture')
 function roomMode() {
@@ -1174,14 +1181,14 @@ function renderMyPredsSummary() {
   const koTotal = R32_FIXTURES.length + R16_FIXTURES.length + QF_FIXTURES.length + SF_FIXTURES.length + FINAL_FIXTURES.length;
 
   if (mode === 'fixture') {
-    const predCount = Object.keys(state.fixturePreds || {}).filter(k => {
-      const p = state.fixturePreds[k];
-      return p && p.scoreA !== undefined && p.scoreB !== undefined;
-    }).length;
+    const fpKeys = Object.keys(state.fixturePreds || {});
+    const isComplete = p => p && p.scoreA !== undefined && p.scoreB !== undefined;
+    const predCount = fpKeys.filter(k => k.startsWith('gm_') && isComplete(state.fixturePreds[k])).length;
     const total = 72;
     const pct = Math.round((predCount / total) * 100);
     const complete = predCount === total;
-    const koPreds = Object.keys(state.knockoutPreds || {}).filter(k => state.knockoutPreds[k].winner).length;
+    // Fixture-Mode KO picks live in fixturePreds keyed by fixture id (r32_*, …).
+    const koPreds = fpKeys.filter(k => !k.startsWith('gm_') && isComplete(state.fixturePreds[k])).length;
 
     const results = (state.room && state.room.results) || {};
     const fxResults = Object.keys(results).filter(k => k.startsWith('fx_'));
@@ -1422,6 +1429,18 @@ function fixtureLockState(fx, now) {
   if (now >= closesAt) return { locked: true, reason: 'closed', opensAt, closesAt };
   if (now < opensAt)   return { locked: true, reason: 'upcoming', opensAt, closesAt };
   return { locked: false, reason: 'open', opensAt, closesAt };
+}
+
+// Knockout Fixture-Mode lock. Unlike the group stage, KO matches are all open
+// from the start (no 2-day-before gate) and simply lock at kickoff. Takes the
+// fixture's IST kickoff; if none is set yet (R16+ before times are known),
+// treat as not-yet-scheduled → locked with reason 'unscheduled'.
+function koFixtureLockState(fx, now) {
+  if (!fx || !fx.ist) return { locked: true, reason: 'unscheduled' };
+  now = now ?? nowInstant();
+  const kickoff = istToInstant(fx.ist);
+  if (now >= kickoff) return { locked: true, reason: 'closed', closesAt: kickoff };
+  return { locked: false, reason: 'open', closesAt: kickoff };
 }
 
 // Day-level summary across all group matches on one IST date, for the day
@@ -2384,16 +2403,24 @@ function buildAllFixtures() {
     fixtures.forEach(f => {
       const ta = getTeamForFixtureSide(f, 'a');
       const tb = getTeamForFixtureSide(f, 'b');
+      const hasTime = !!f.ist; // real kickoff known (R32 now; others as filled)
       list.push({
         kind: 'knockout',
-        label: roundName,
+        koId: f.id,                       // stable prediction/result key (e.g. r32_1)
+        roundKey: f.id.split('_')[0],     // r32 / r16 / qf / sf / final
+        teamAKey: ta ? ta.key : null,
+        teamBKey: tb ? tb.key : null,
         teamAName: ta ? ta.name : slotLabel(f.a),
         teamAFlag: ta ? flagHTML(ta.name) : flagHTML(null),
         teamBName: tb ? tb.name : slotLabel(f.b),
         teamBFlag: tb ? flagHTML(tb.name) : flagHTML(null),
-        ist: f.date + 'T23:30',  // knockout exact times TBC; show date
-        dateOnly: true,
+        // Both teams confirmed (real keys, not slot placeholders) AND a kickoff
+        // time is set → eligible for Fixture-Mode scoreline prediction.
+        koScorable: hasTime && !!(ta && tb),
+        ist: hasTime ? f.ist : (f.date + 'T23:30'),
+        dateOnly: !hasTime,
         venue: f.label,
+        label: roundName,
       });
     });
   });
@@ -2505,6 +2532,48 @@ function renderFixtures() {
           </div>
           ${resultLine ? `<div class="fx-vs-foot">${resultLine}</div>` : ''}
         </div>`;
+    } else if (isFixtureMode && f.kind === 'knockout' && f.koScorable) {
+      // Knockout match in Fixture Mode: same scoreline-prediction card, but
+      // gated by the KO lock (open until kickoff) and scored with stacking
+      // (winner +5, exact scoreline +3).
+      const koLock = koFixtureLockState({ ist: f.ist }, now);
+      const pred = state.fixturePreds[f.koId] || {};
+      const res = results[f.koId]; // KO results stored under the fixture id
+      const pa = pred.scoreA ?? '';
+      const pb = pred.scoreB ?? '';
+      let resultLine = '';
+      if (res && res.scoreA !== undefined && res.scoreB !== undefined) {
+        const enriched = Object.assign({}, res, { _teamAKey: f.teamAKey });
+        const pts = koFixturePoints(pred, enriched);
+        resultLine = `<div class="fx-result">Result ${res.scoreA}–${res.scoreB} · you scored <b>${pts}</b> pt${pts===1?'':'s'}</div>`;
+      } else if (koLock.locked) {
+        resultLine = `<div class="fx-lock-note">🔒 Predictions locked — this match has kicked off</div>`;
+      } else {
+        resultLine = `<div class="fx-ko-hint">Knockout: correct winner +${KO_FIXTURE_WINNER_PTS}, exact score +${KO_FIXTURE_EXACT_PTS}</div>`;
+      }
+      const disabled = (res || koLock.locked) ? 'disabled' : '';
+      html += `
+        <div class="fx-row fx-row-vs fx-row-ko ${res ? 'done' : ''} ${koLock.locked && !res ? 'locked' : ''}">
+          ${timeBlock}
+          <div class="fx-vs">
+            <div class="fx-side fx-side-home">
+              <span class="fx-side-name">${f.teamAName}</span>
+              ${f.teamAFlag}
+            </div>
+            <div class="fx-predict">
+              <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.koId}-a"
+                value="${pa}" placeholder="–" ${disabled} oninput="onKoFixtureInput('${f.koId}')">
+              <span class="fx-colon">:</span>
+              <input type="number" min="0" max="20" class="fx-score-in" id="fx-${f.koId}-b"
+                value="${pb}" placeholder="–" ${disabled} oninput="onKoFixtureInput('${f.koId}')">
+            </div>
+            <div class="fx-side fx-side-away">
+              ${f.teamBFlag}
+              <span class="fx-side-name">${f.teamBName}</span>
+            </div>
+          </div>
+          <div class="fx-vs-foot"><span class="fx-ko-badge">${f.venue}</span>${resultLine}</div>
+        </div>`;
     } else {
       html += `
         <div class="fx-row">
@@ -2557,8 +2626,33 @@ function onFixtureInput(gmId) {
   scheduleFixtureAutosave();
 }
 
-// Explicit, intentional clear of a saved prediction (the ONLY path allowed to
-// remove a prediction from the cloud). Wire this to a future "clear" button.
+// Live-capture a KNOCKOUT fixture scoreline (Fixture Mode). Stored in the same
+// fixturePreds map but keyed by the fixture id (e.g. 'r32_1'). Gated by the KO
+// lock (open until kickoff).
+function onKoFixtureInput(koId) {
+  if (!state.fixturePreds) state.fixturePreds = {};
+  const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+    .find(x => x.id === koId);
+  if (fx) {
+    const lock = koFixtureLockState({ ist: fx.ist });
+    const res = state.room && state.room.results && state.room.results[koId];
+    if (lock.locked && !res) {
+      toast(lock.reason === 'unscheduled'
+        ? 'This match is not open for predictions yet.'
+        : 'This match is locked — kickoff has passed.', 'info');
+      renderFixtures();
+      return;
+    }
+  }
+  const a = document.getElementById('fx-' + koId + '-a').value;
+  const b = document.getElementById('fx-' + koId + '-b').value;
+  const entry = {};
+  if (a !== '') entry.scoreA = parseInt(a);
+  if (b !== '') entry.scoreB = parseInt(b);
+  state.fixturePreds[koId] = entry;
+  saveState();
+  scheduleFixtureAutosave();
+}
 function clearFixturePrediction(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};
   state.fixturePreds[gmId] = { _cleared: true };
@@ -2637,6 +2731,36 @@ function fixturePoints(pred, res) {
   return 0;
 }
 
+// Knockout Fixture-Mode scoring. STACKS: +5 for the correct advancing team,
+// +3 more if the 90-minute scoreline is exact. The "winner" here is who goes
+// through (res.winner), which may be decided by ET/penalties — so a predicted
+// draw can still earn the +5 if that team is recorded as advancing, and the
+// +3 exact-scoreline bonus is judged on the 90-minute score only.
+function koFixturePoints(pred, res) {
+  if (!pred || pred.scoreA === undefined || pred.scoreB === undefined) return 0;
+  if (!res || res.scoreA === undefined || res.scoreB === undefined) return 0;
+  let pts = 0;
+  // Winner component: prefer res.winner (handles ET/pens); fall back to the
+  // 90-min scoreline if no explicit winner was recorded.
+  const predWinner = pred.winner
+    || (pred.scoreA > pred.scoreB ? 'a' : pred.scoreB > pred.scoreA ? 'b' : null);
+  let resWinnerSide = res.winnerSide;
+  if (!resWinnerSide && res.winner && res._teamAKey) {
+    resWinnerSide = res.winner === res._teamAKey ? 'a' : 'b';
+  }
+  if (!resWinnerSide) {
+    resWinnerSide = res.scoreA > res.scoreB ? 'a' : res.scoreB > res.scoreA ? 'b' : null;
+  }
+  if (predWinner && resWinnerSide && predWinner === resWinnerSide) {
+    pts += KO_FIXTURE_WINNER_PTS;
+  }
+  // Exact 90-minute scoreline bonus.
+  if (pred.scoreA === res.scoreA && pred.scoreB === res.scoreB) {
+    pts += KO_FIXTURE_EXACT_PTS;
+  }
+  return pts;
+}
+
 async function saveFixturePredictions(opts = {}) {
   const silent = opts.silent === true;
   if (!state.room || !state.user) {
@@ -2656,7 +2780,26 @@ async function saveFixturePredictions(opts = {}) {
   // Carry over every previously-saved prediction verbatim first.
   Object.keys(prevFix).forEach(gmId => { merged[gmId] = prevFix[gmId]; });
 
-  Object.keys(state.fixturePreds || {}).forEach(gmId => {
+  Object.keys(state.fixturePreds || {}).forEach(predId => {
+    const entry = state.fixturePreds[predId] || {};
+
+    // ---- Knockout fixture prediction (key is a fixture id like 'r32_1') ----
+    if (!predId.startsWith('gm_')) {
+      const koFx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+        .find(x => x.id === predId);
+      if (!koFx) return; // unknown key — never touch
+      const koRes = room.results && room.results[predId];
+      const koLock = koFixtureLockState({ ist: koFx.ist });
+      // Never modify a locked KO match unless a result already exists.
+      if (koLock.locked && !koRes) return;
+      if (entry._cleared) { delete merged[predId]; return; }
+      const bothKo = entry.scoreA !== undefined && entry.scoreB !== undefined;
+      if (bothKo) merged[predId] = { scoreA: entry.scoreA, scoreB: entry.scoreB };
+      return;
+    }
+
+    // ---- Group-stage fixture prediction (key 'gm_N') ----
+    const gmId = predId;
     const idx = parseInt(gmId.split('_')[1], 10);
     const fx = GROUP_FIXTURES[idx];
     if (!fx) return;
@@ -2664,8 +2807,6 @@ async function saveFixturePredictions(opts = {}) {
     const lock = fixtureLockState({ ist: fx.ist, kind: 'group' });
     // Never modify a locked match unless a result already exists for it.
     if (lock.locked && !res) return;
-
-    const entry = state.fixturePreds[gmId] || {};
 
     // Explicit clear: the only path allowed to remove a saved prediction.
     if (entry._cleared) {
@@ -3347,6 +3488,8 @@ function computeScores(room) {
       }
     });
 
+    const isFixtureRoom = (room.mode === 'fixture');
+
     // Fixture Mode scoring: per group-match scoreline (exact=3, outcome=1)
     Object.entries(room.results || {}).forEach(([key, result]) => {
       if (!key.startsWith('fx_')) return;
@@ -3360,25 +3503,46 @@ function computeScores(room) {
       if (pts === FIXTURE_EXACT_PTS) s.correctWinners++;
     });
 
-    // Knockout scoring
-    Object.entries(room.results || {}).forEach(([matchId, result]) => {
-      if (matchId.startsWith('group_') || matchId.startsWith('fx_')) return;
-      const pred = knockoutPreds[matchId];
-      if (!pred || !result.winner) return;
-
-      const round = matchId.split('_')[0];
-      const pts = ROUND_PTS[round] || 5;
-
-      if (pred.winner === result.winner) {
-        s.knockoutPts += pts;
-        s.total += pts;
-        s.correctWinners++;
-        if (pred.scoreA === result.scoreA && pred.scoreB === result.scoreB) {
-          s.knockoutPts += 3;
-          s.total += 3;
+    // Knockout scoring — branch by room mode.
+    if (isFixtureRoom) {
+      // Fixture Mode KO: scoreline predictions in fixturePreds[koId], scored
+      // with stacking (winner +5, exact +3). Results are stored under the
+      // fixture id (e.g. 'r32_1').
+      Object.entries(room.results || {}).forEach(([matchId, result]) => {
+        if (matchId.startsWith('group_') || matchId.startsWith('fx_')) return;
+        const pred = fixturePreds[matchId];
+        if (!pred) return;
+        const koFx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+          .find(x => x.id === matchId);
+        const enriched = Object.assign({}, result, { _teamAKey: koFx ? koFx.teamA : undefined });
+        const pts = koFixturePoints(pred, enriched);
+        if (pts) {
+          s.knockoutPts += pts;
+          s.total += pts;
+          if (pts >= KO_FIXTURE_WINNER_PTS) s.correctWinners++;
         }
-      }
-    });
+      });
+    } else {
+      // Bracket Mode KO: winner/scoreline predictions in knockoutPreds.
+      Object.entries(room.results || {}).forEach(([matchId, result]) => {
+        if (matchId.startsWith('group_') || matchId.startsWith('fx_')) return;
+        const pred = knockoutPreds[matchId];
+        if (!pred || !result.winner) return;
+
+        const round = matchId.split('_')[0];
+        const pts = ROUND_PTS[round] || 5;
+
+        if (pred.winner === result.winner) {
+          s.knockoutPts += pts;
+          s.total += pts;
+          s.correctWinners++;
+          if (pred.scoreA === result.scoreA && pred.scoreB === result.scoreB) {
+            s.knockoutPts += 3;
+            s.total += 3;
+          }
+        }
+      });
+    }
   });
   
   return scores;

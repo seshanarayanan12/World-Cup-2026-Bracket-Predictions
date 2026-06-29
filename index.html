@@ -185,6 +185,61 @@
   .bracket-match.locked { opacity: 0.5; cursor: not-allowed; }
   .bracket-match.locked:hover { border-color: var(--border); }
   .locked-tab { opacity: 0.55; }
+
+  /* ===== Fixture-Mode converging bracket tree (fxbr-*) ===== */
+  .fx-view-toggle { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; margin-bottom: 14px; }
+  .fx-view-btn { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .fx-view-btn:hover { color: var(--text); }
+  .fx-view-btn.active { background: var(--gold-dim); color: var(--gold); }
+  /* Desktop: 9-column converging tree, left flows →, right mirrors ←. */
+  .fxbr-wrap { overflow-x: auto; padding: 4px 0 18px; }
+  .fxbr-tree { display: flex; align-items: stretch; gap: 6px; min-width: 1520px; }
+  .fxbr-col { display: flex; flex-direction: column; justify-content: space-around; flex: 1 1 0; min-width: 150px; gap: 8px; }
+  .fxbr-col.fxbr-final-col { flex: 0 0 168px; justify-content: center; }
+  .fxbr-col-head { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 8px; }
+  .fxbr-cell { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 6px; display: flex; flex-direction: column; gap: 5px; }
+  .fxbr-cell.fxbr-locked { opacity: 0.55; }
+  .fxbr-cell.fxbr-final { border-color: rgba(245,166,35,0.5); box-shadow: 0 0 0 1px rgba(245,166,35,0.15); }
+  .fxbr-cell-label { font-size: 8px; color: var(--muted); text-align: center; letter-spacing: 0.4px; }
+  .fxbr-vs { display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .fxbr-team { display: flex; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0; }
+  .fxbr-team-a { justify-content: flex-end; }
+  .fxbr-team-b { justify-content: flex-start; }
+  .fxbr-predict { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .fxbr-colon { color: var(--muted); font-weight: 700; font-size: 12px; }
+  .fxbr-flag-btn { border: 2px solid transparent; border-radius: 6px; padding: 1px; background: none; cursor: pointer; line-height: 0; flex-shrink: 0; transition: border-color 0.12s, box-shadow 0.12s; }
+  .fxbr-flag-btn:hover:not(:disabled) { border-color: var(--border-bright); }
+  .fxbr-flag-btn:disabled { cursor: default; }
+  .fxbr-flag-btn.fxbr-adv { border-color: var(--gold); box-shadow: 0 0 6px rgba(245,166,35,0.45); }
+  .fxbr-flag-btn .flag { width: 22px; height: 16px; border-radius: 2px; }
+  .fxbr-code { font-size: 10px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .fxbr-code.fxbr-tbd { color: var(--muted); font-weight: 500; }
+  .fxbr-score-in { width: 30px; height: 30px; text-align: center; font-size: 14px; font-weight: 700; background: var(--bg); border: 1px solid var(--border-bright); border-radius: 5px; color: var(--text); padding: 0; outline: none; -moz-appearance: textfield; }
+  .fxbr-score-in:focus { border-color: var(--gold); }
+  .fxbr-score-in::-webkit-outer-spin-button, .fxbr-score-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .fxbr-score-in:disabled { opacity: 0.6; }
+  .fxbr-foot { font-size: 8px; text-align: center; color: var(--muted); margin-top: 1px; }
+  .fxbr-foot.fxbr-pts { color: var(--gold); font-weight: 700; }
+  /* Mobile: vertical accordion by round (R32→Final). */
+  @media (max-width: 700px) {
+    .fxbr-wrap { overflow-x: visible; }
+    .fxbr-tree { flex-direction: column; min-width: 0; gap: 0; }
+    .fxbr-col { flex: none; min-width: 0; }
+    .fxbr-acc-head { width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 700; padding: 11px 14px; margin-top: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .fxbr-acc-head .fxbr-acc-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
+    .fxbr-acc-head.open .fxbr-acc-caret { transform: rotate(90deg); }
+    .fxbr-acc-body { display: none; flex-direction: column; gap: 8px; padding: 8px 0 4px; }
+    .fxbr-acc-body.open { display: flex; }
+    .fxbr-col-head { display: none; }
+    .fxbr-cell { padding: 9px 12px; }
+    .fxbr-flag-btn .flag { width: 26px; height: 19px; }
+    .fxbr-code { font-size: 12px; }
+    .fxbr-score-in { width: 34px; height: 34px; font-size: 15px; }
+    .fxbr-cell-label { font-size: 10px; }
+    .fxbr-foot { font-size: 10px; }
+  }
+  /* Desktop: hide mobile accordion headers. */
+  @media (min-width: 701px) { .fxbr-acc-head { display: none; } .fxbr-acc-body { display: contents; } }
   .match-flag { font-size: 14px; }
   .match-score { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 16px; text-align: center; }
   .connector { width: 10px; border-top: 1px solid var(--border); }
@@ -467,6 +522,12 @@
       <div class="section-subtitle">All kickoff times shown in IST (India Standard Time)</div>
     </div>
   </div>
+  <div id="fx-view-toggle-wrap" style="display:none;">
+    <div class="fx-view-toggle">
+      <button class="fx-view-btn active" id="fx-view-rounds" onclick="setFixtureView('rounds')">List</button>
+      <button class="fx-view-btn" id="fx-view-bracket" onclick="setFixtureView('bracket')">Tree</button>
+    </div>
+  </div>
   <div class="sub-tabs" id="fixtures-subtabs">
     <button class="sub-tab active" onclick="showFixtureTab('all')">All</button>
     <button class="sub-tab" onclick="showFixtureTab('group')">Group Stage</button>
@@ -474,6 +535,7 @@
     <button class="sub-tab" onclick="showFixtureTab('today')">Upcoming</button>
   </div>
   <div id="fixtures-list"></div>
+  <div id="fixtures-bracket" style="display:none;"></div>
 </div>
 
 <!-- GROUPS PAGE -->
@@ -881,65 +943,65 @@ window.addEventListener('error', function(e){
 
 const TEAMS = {
   // GROUP A
-  'Mexico': { flag: '🇲🇽', name: 'Mexico', group: 'A' },
-  'South Africa': { flag: '🇿🇦', name: 'South Africa', group: 'A' },
-  'South Korea': { flag: '🇰🇷', name: 'South Korea', group: 'A' },
-  'Czechia': { flag: '🇨🇿', name: 'Czechia', group: 'A' },
+  'Mexico': { flag: '🇲🇽', name: 'Mexico', group: 'A', code: 'MEX' },
+  'South Africa': { flag: '🇿🇦', name: 'South Africa', group: 'A', code: 'RSA' },
+  'South Korea': { flag: '🇰🇷', name: 'South Korea', group: 'A', code: 'KOR' },
+  'Czechia': { flag: '🇨🇿', name: 'Czechia', group: 'A', code: 'CZE' },
   // GROUP B
-  'Canada': { flag: '🇨🇦', name: 'Canada', group: 'B' },
-  'Switzerland': { flag: '🇨🇭', name: 'Switzerland', group: 'B' },
-  'Qatar': { flag: '🇶🇦', name: 'Qatar', group: 'B' },
-  'Bosnia': { flag: '🇧🇦', name: 'Bosnia & Herzegovina', group: 'B' },
+  'Canada': { flag: '🇨🇦', name: 'Canada', group: 'B', code: 'CAN' },
+  'Switzerland': { flag: '🇨🇭', name: 'Switzerland', group: 'B', code: 'SUI' },
+  'Qatar': { flag: '🇶🇦', name: 'Qatar', group: 'B', code: 'QAT' },
+  'Bosnia': { flag: '🇧🇦', name: 'Bosnia & Herzegovina', group: 'B', code: 'BIH' },
   // GROUP C
-  'Brazil': { flag: '🇧🇷', name: 'Brazil', group: 'C' },
-  'Morocco': { flag: '🇲🇦', name: 'Morocco', group: 'C' },
-  'Haiti': { flag: '🇭🇹', name: 'Haiti', group: 'C' },
-  'Scotland': { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Scotland', group: 'C' },
+  'Brazil': { flag: '🇧🇷', name: 'Brazil', group: 'C', code: 'BRA' },
+  'Morocco': { flag: '🇲🇦', name: 'Morocco', group: 'C', code: 'MAR' },
+  'Haiti': { flag: '🇭🇹', name: 'Haiti', group: 'C', code: 'HAI' },
+  'Scotland': { flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', name: 'Scotland', group: 'C', code: 'SCO' },
   // GROUP D
-  'USA': { flag: '🇺🇸', name: 'USA', group: 'D' },
-  'Paraguay': { flag: '🇵🇾', name: 'Paraguay', group: 'D' },
-  'Australia': { flag: '🇦🇺', name: 'Australia', group: 'D' },
-  'Turkiye': { flag: '🇹🇷', name: 'Türkiye', group: 'D' },
+  'USA': { flag: '🇺🇸', name: 'USA', group: 'D', code: 'USA' },
+  'Paraguay': { flag: '🇵🇾', name: 'Paraguay', group: 'D', code: 'PAR' },
+  'Australia': { flag: '🇦🇺', name: 'Australia', group: 'D', code: 'AUS' },
+  'Turkiye': { flag: '🇹🇷', name: 'Türkiye', group: 'D', code: 'TUR' },
   // GROUP E
-  'Germany': { flag: '🇩🇪', name: 'Germany', group: 'E' },
-  'Curacao': { flag: '🇨🇼', name: 'Curaçao', group: 'E' },
-  'Ivory Coast': { flag: '🇨🇮', name: 'Ivory Coast', group: 'E' },
-  'Ecuador': { flag: '🇪🇨', name: 'Ecuador', group: 'E' },
+  'Germany': { flag: '🇩🇪', name: 'Germany', group: 'E', code: 'GER' },
+  'Curacao': { flag: '🇨🇼', name: 'Curaçao', group: 'E', code: 'CUW' },
+  'Ivory Coast': { flag: '🇨🇮', name: 'Ivory Coast', group: 'E', code: 'CIV' },
+  'Ecuador': { flag: '🇪🇨', name: 'Ecuador', group: 'E', code: 'ECU' },
   // GROUP F
-  'Netherlands': { flag: '🇳🇱', name: 'Netherlands', group: 'F' },
-  'Japan': { flag: '🇯🇵', name: 'Japan', group: 'F' },
-  'Tunisia': { flag: '🇹🇳', name: 'Tunisia', group: 'F' },
-  'Sweden': { flag: '🇸🇪', name: 'Sweden', group: 'F' },
+  'Netherlands': { flag: '🇳🇱', name: 'Netherlands', group: 'F', code: 'NED' },
+  'Japan': { flag: '🇯🇵', name: 'Japan', group: 'F', code: 'JPN' },
+  'Tunisia': { flag: '🇹🇳', name: 'Tunisia', group: 'F', code: 'TUN' },
+  'Sweden': { flag: '🇸🇪', name: 'Sweden', group: 'F', code: 'SWE' },
   // GROUP G
-  'Belgium': { flag: '🇧🇪', name: 'Belgium', group: 'G' },
-  'Egypt': { flag: '🇪🇬', name: 'Egypt', group: 'G' },
-  'Iran': { flag: '🇮🇷', name: 'Iran', group: 'G' },
-  'New Zealand': { flag: '🇳🇿', name: 'New Zealand', group: 'G' },
+  'Belgium': { flag: '🇧🇪', name: 'Belgium', group: 'G', code: 'BEL' },
+  'Egypt': { flag: '🇪🇬', name: 'Egypt', group: 'G', code: 'EGY' },
+  'Iran': { flag: '🇮🇷', name: 'Iran', group: 'G', code: 'IRN' },
+  'New Zealand': { flag: '🇳🇿', name: 'New Zealand', group: 'G', code: 'NZL' },
   // GROUP H
-  'Spain': { flag: '🇪🇸', name: 'Spain', group: 'H' },
-  'Cape Verde': { flag: '🇨🇻', name: 'Cape Verde', group: 'H' },
-  'Saudi Arabia': { flag: '🇸🇦', name: 'Saudi Arabia', group: 'H' },
-  'Uruguay': { flag: '🇺🇾', name: 'Uruguay', group: 'H' },
+  'Spain': { flag: '🇪🇸', name: 'Spain', group: 'H', code: 'ESP' },
+  'Cape Verde': { flag: '🇨🇻', name: 'Cape Verde', group: 'H', code: 'CPV' },
+  'Saudi Arabia': { flag: '🇸🇦', name: 'Saudi Arabia', group: 'H', code: 'KSA' },
+  'Uruguay': { flag: '🇺🇾', name: 'Uruguay', group: 'H', code: 'URU' },
   // GROUP I
-  'France': { flag: '🇫🇷', name: 'France', group: 'I' },
-  'Senegal': { flag: '🇸🇳', name: 'Senegal', group: 'I' },
-  'Norway': { flag: '🇳🇴', name: 'Norway', group: 'I' },
-  'Iraq': { flag: '🇮🇶', name: 'Iraq', group: 'I' },
+  'France': { flag: '🇫🇷', name: 'France', group: 'I', code: 'FRA' },
+  'Senegal': { flag: '🇸🇳', name: 'Senegal', group: 'I', code: 'SEN' },
+  'Norway': { flag: '🇳🇴', name: 'Norway', group: 'I', code: 'NOR' },
+  'Iraq': { flag: '🇮🇶', name: 'Iraq', group: 'I', code: 'IRQ' },
   // GROUP J
-  'Argentina': { flag: '🇦🇷', name: 'Argentina', group: 'J' },
-  'Algeria': { flag: '🇩🇿', name: 'Algeria', group: 'J' },
-  'Austria': { flag: '🇦🇹', name: 'Austria', group: 'J' },
-  'Jordan': { flag: '🇯🇴', name: 'Jordan', group: 'J' },
+  'Argentina': { flag: '🇦🇷', name: 'Argentina', group: 'J', code: 'ARG' },
+  'Algeria': { flag: '🇩🇿', name: 'Algeria', group: 'J', code: 'ALG' },
+  'Austria': { flag: '🇦🇹', name: 'Austria', group: 'J', code: 'AUT' },
+  'Jordan': { flag: '🇯🇴', name: 'Jordan', group: 'J', code: 'JOR' },
   // GROUP K
-  'Portugal': { flag: '🇵🇹', name: 'Portugal', group: 'K' },
-  'Uzbekistan': { flag: '🇺🇿', name: 'Uzbekistan', group: 'K' },
-  'Colombia': { flag: '🇨🇴', name: 'Colombia', group: 'K' },
-  'DR Congo': { flag: '🇨🇩', name: 'DR Congo', group: 'K' },
+  'Portugal': { flag: '🇵🇹', name: 'Portugal', group: 'K', code: 'POR' },
+  'Uzbekistan': { flag: '🇺🇿', name: 'Uzbekistan', group: 'K', code: 'UZB' },
+  'Colombia': { flag: '🇨🇴', name: 'Colombia', group: 'K', code: 'COL' },
+  'DR Congo': { flag: '🇨🇩', name: 'DR Congo', group: 'K', code: 'COD' },
   // GROUP L
-  'England': { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', name: 'England', group: 'L' },
-  'Croatia': { flag: '🇭🇷', name: 'Croatia', group: 'L' },
-  'Ghana': { flag: '🇬🇭', name: 'Ghana', group: 'L' },
-  'Panama': { flag: '🇵🇦', name: 'Panama', group: 'L' },
+  'England': { flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', name: 'England', group: 'L', code: 'ENG' },
+  'Croatia': { flag: '🇭🇷', name: 'Croatia', group: 'L', code: 'CRO' },
+  'Ghana': { flag: '🇬🇭', name: 'Ghana', group: 'L', code: 'GHA' },
+  'Panama': { flag: '🇵🇦', name: 'Panama', group: 'L', code: 'PAN' },
 };
 
 // ISO 3166-1 alpha-2 codes for flag-icons SVGs. England/Scotland are not ISO
@@ -2371,6 +2433,26 @@ function showSubTab(id) {
 // ============================================================
 
 let fixtureFilter = 'all';
+let fixtureView = 'rounds'; // 'rounds' (list) | 'bracket' (converging tree)
+
+// Toggle between the day-grouped Rounds list and the converging Bracket tree.
+// Fixture Mode only; both edit the same fixturePreds via the same handlers.
+function setFixtureView(which) {
+  fixtureView = which;
+  const listEl = document.getElementById('fixtures-list');
+  const brEl = document.getElementById('fixtures-bracket');
+  const subtabs = document.getElementById('fixtures-subtabs');
+  const rBtn = document.getElementById('fx-view-rounds');
+  const bBtn = document.getElementById('fx-view-bracket');
+  const bracket = (which === 'bracket');
+  if (rBtn) rBtn.classList.toggle('active', !bracket);
+  if (bBtn) bBtn.classList.toggle('active', bracket);
+  // Filter sub-tabs only make sense for the list; hide them in bracket view.
+  if (subtabs) subtabs.style.display = bracket ? 'none' : '';
+  if (listEl) listEl.style.display = bracket ? 'none' : '';
+  if (brEl) brEl.style.display = bracket ? '' : 'none';
+  if (bracket) renderFixtureBracket();
+}
 
 function showFixtureTab(which) {
   fixtureFilter = which;
@@ -2440,6 +2522,11 @@ function renderFixtures() {
   if (!container) return;
 
   const isFixtureMode = roomMode() === 'fixture';
+  // The converging Bracket view is a Fixture-Mode feature; show its toggle only
+  // there. In Bracket Mode the dedicated Knockout page already has a tree.
+  const toggleWrap = document.getElementById('fx-view-toggle-wrap');
+  if (toggleWrap) toggleWrap.style.display = isFixtureMode ? '' : 'none';
+  if (!isFixtureMode && fixtureView === 'bracket') setFixtureView('rounds');
   let fixtures = buildAllFixtures();
 
   if (fixtureFilter === 'group') fixtures = fixtures.filter(f => f.kind === 'group');
@@ -2632,6 +2719,184 @@ function renderFixtures() {
   container.innerHTML = html;
 }
 
+// ============================================================
+// CONVERGING BRACKET TREE (Fixture Mode) — editable, responsive.
+// Left half (r32_1–8 → r16_1–4 → qf_1,2 → sf_1) flows →; right half
+// (r32_9–16 → r16_5–8 → qf_3,4 → sf_2) mirrors ←; both meet at final_1.
+// Cells reuse the same fixturePreds + shared edit core as the Rounds list.
+// ============================================================
+
+// Resolve a KO fixture's two sides to {key,name,code} or null (placeholder).
+function fxbrSide(fx, side) {
+  const t = getTeamForFixtureSide(fx, side);
+  if (t && t.key) return { key: t.key, code: TEAMS[t.key]?.code || t.key.slice(0,3).toUpperCase(), name: t.name };
+  const slot = side === 'a' ? fx.a : fx.b;
+  return { key: null, code: shortSlot(slot), name: slotLabel(slot) };
+}
+// Compact slot label for tight cells, e.g. "W74" / "1A" / "3E".
+function shortSlot(slot) {
+  if (!slot) return '—';
+  if (slot.startsWith('W-r32_')) return 'W' + (72 + parseInt(slot.slice(6)));      // r32_1 → M73
+  if (slot.startsWith('W-r16_')) return 'W' + (88 + parseInt(slot.slice(6)));      // r16_1 → M89
+  if (slot.startsWith('W-qf_'))  return 'WQF' + slot.slice(5);
+  if (slot.startsWith('W-sf_'))  return 'WSF' + slot.slice(5);
+  if (slot.startsWith('W-')) return 'W?';
+  return slot; // 1A / 2B / 3E
+}
+
+// Render one editable bracket cell for a KO fixture id.
+function fxbrCell(fx, isFinal) {
+  const now = nowInstant();
+  const koId = fx.id;
+  const a = fxbrSide(fx, 'a');
+  const b = fxbrSide(fx, 'b');
+  const scorable = !!(a.key && b.key) && !!fx.ist; // both teams + a kickoff time
+  const lock = koFixtureLockState({ ist: fx.ist }, now);
+  const res = (state.room && state.room.results && state.room.results[koId]) || null;
+  const pred = (state.fixturePreds && state.fixturePreds[koId]) || {};
+  const pa = pred.scoreA ?? '';
+  const pb = pred.scoreB ?? '';
+
+  // Decide advancer side for highlight: result wins; else explicit/derived pred.
+  let advSide = null;
+  if (res && res.winner) {
+    advSide = res.winner === a.key ? 'a' : res.winner === b.key ? 'b' : null;
+  } else {
+    advSide = pred.winner || (pa !== '' && pb !== '' ? (pa > pb ? 'a' : pb > pa ? 'b' : null) : null);
+  }
+  const decisive = (pa !== '' && pb !== '' && pa !== pb);
+  const editable = scorable && !res && !lock.locked;
+  const flagDisabled = !editable || decisive; // flags lock on result/lock/decisive
+
+  // One team block: tappable flag (advancer pick) + tricode. Side A is
+  // right-aligned toward the centre scores; side B left-aligned. Mirrors the
+  // list card's "TeamA  [a]:[b]  TeamB" arrangement.
+  const teamBlock = (s, sideKey) => {
+    const advCls = advSide === sideKey ? ' fxbr-adv' : '';
+    const tbd = s.key ? '' : ' fxbr-tbd';
+    const flag = s.key ? flagHTML(s.key) : `<span class="flag flag-unknown">🏳</span>`;
+    const onclick = (s.key && editable) ? `onclick="setKoBracketAdvance('${koId}','${sideKey}')"` : '';
+    const dataLock = (!s.key || res || lock.locked) ? '1' : '0';
+    const flagBtn = `<button class="fxbr-flag-btn${advCls}" data-locked="${dataLock}" ${flagDisabled ? 'disabled' : ''} ${onclick} title="${s.name}">${flag}</button>`;
+    const code = `<span class="fxbr-code${tbd}">${s.code}</span>`;
+    // Side A: flag then code (code sits next to the centre); Side B: code then flag.
+    return sideKey === 'a'
+      ? `<div class="fxbr-team fxbr-team-a">${flagBtn}${code}</div>`
+      : `<div class="fxbr-team fxbr-team-b">${code}${flagBtn}</div>`;
+  };
+
+  const scoreInputs = res
+    ? `<input type="number" class="fxbr-score-in" value="${res.scoreA}" disabled>
+       <span class="fxbr-colon">:</span>
+       <input type="number" class="fxbr-score-in" value="${res.scoreB}" disabled>`
+    : `<input type="number" min="0" max="20" class="fxbr-score-in" id="fxbr-${koId}-a" value="${pa}" placeholder="–" ${editable ? '' : 'disabled'} oninput="onKoBracketInput('${koId}')">
+       <span class="fxbr-colon">:</span>
+       <input type="number" min="0" max="20" class="fxbr-score-in" id="fxbr-${koId}-b" value="${pb}" placeholder="–" ${editable ? '' : 'disabled'} oninput="onKoBracketInput('${koId}')">`;
+
+  // Footer: result tag + points, or lock note, or hint.
+  let foot = '';
+  if (res) {
+    const enriched = Object.assign({}, res, { _teamAKey: a.key });
+    const pts = koFixturePoints(pred, enriched);
+    const tag = res.duration === 'PENALTY_SHOOTOUT' ? ' (p)' : res.duration === 'EXTRA_TIME' ? ' (aet)' : '';
+    foot = `<div class="fxbr-foot fxbr-pts">${res.scoreA}–${res.scoreB}${tag} · +${pts}</div>`;
+  } else if (lock.locked && lock.reason === 'closed') {
+    foot = `<div class="fxbr-foot">🔒 locked</div>`;
+  } else if (!scorable) {
+    foot = `<div class="fxbr-foot">awaiting teams</div>`;
+  } else if (decisive) {
+    foot = `<div class="fxbr-foot">advancer from score</div>`;
+  } else if (pa !== '' && pb !== '') {
+    foot = `<div class="fxbr-foot">tap flag: who advances</div>`;
+  }
+
+  return `<div class="fxbr-cell${isFinal ? ' fxbr-final' : ''}${lock.locked && !res ? ' fxbr-locked' : ''}">
+    <div class="fxbr-cell-label">${fx.label || koId}</div>
+    <div class="fxbr-vs">
+      ${teamBlock(a, 'a')}
+      <div class="fxbr-predict">${scoreInputs}</div>
+      ${teamBlock(b, 'b')}
+    </div>
+    ${foot}
+  </div>`;
+}
+
+// Build a single round column (desktop) / accordion section (mobile).
+function fxbrColumn(headLabel, fixtures, isFinal) {
+  const cells = fixtures.map(fx => fxbrCell(fx, isFinal)).join('');
+  return `<div class="fxbr-col${isFinal ? ' fxbr-final-col' : ''}">
+    <div class="fxbr-col-head">${headLabel}</div>
+    <button class="fxbr-acc-head" onclick="toggleBracketAcc(this)">${headLabel}<span class="fxbr-acc-caret">▶</span></button>
+    <div class="fxbr-acc-body">${cells}</div>
+  </div>`;
+}
+
+function toggleBracketAcc(btn) {
+  btn.classList.toggle('open');
+  const body = btn.nextElementSibling;
+  if (body) body.classList.toggle('open');
+}
+
+function renderFixtureBracket() {
+  const el = document.getElementById('fixtures-bracket');
+  if (!el) return;
+  // Left/right halves derived from the official W- wiring.
+  const L_r32 = R32_FIXTURES.slice(0, 8), R_r32 = R32_FIXTURES.slice(8, 16);
+  const L_r16 = R16_FIXTURES.slice(0, 4), R_r16 = R16_FIXTURES.slice(4, 8);
+  const L_qf  = QF_FIXTURES.slice(0, 2),  R_qf  = QF_FIXTURES.slice(2, 4);
+  const L_sf  = [SF_FIXTURES[0]],          R_sf  = [SF_FIXTURES[1]];
+
+  // Desktop tree order: L→ ... FINAL ... ←R. Mobile CSS stacks these vertically;
+  // to keep mobile in round order (R32→Final) we render a separate ordering on
+  // small screens via the accordion heads (each column is one round-half, but
+  // mobile shows them sequentially, which already reads R32-L, R16-L … then
+  // R32-R last). To keep mobile strictly round-grouped we merge halves per round.
+  const desktopHTML = `<div class="fxbr-wrap"><div class="fxbr-tree">
+    ${fxbrColumn('R32', L_r32)}
+    ${fxbrColumn('R16', L_r16)}
+    ${fxbrColumn('QF', L_qf)}
+    ${fxbrColumn('SF', L_sf)}
+    ${fxbrColumn('Final', FINAL_FIXTURES, true)}
+    ${fxbrColumn('SF', R_sf)}
+    ${fxbrColumn('QF', R_qf)}
+    ${fxbrColumn('R16', R_r16)}
+    ${fxbrColumn('R32', R_r32)}
+  </div></div>`;
+
+  // Mobile accordion: one section per round with BOTH halves, R32→Final.
+  const mobileHTML = `<div class="fxbr-wrap fxbr-mobile">
+    ${fxbrColumn('Round of 32', [...L_r32, ...R_r32])}
+    ${fxbrColumn('Round of 16', [...L_r16, ...R_r16])}
+    ${fxbrColumn('Quarter-Finals', [...L_qf, ...R_qf])}
+    ${fxbrColumn('Semi-Finals', [...L_sf, ...R_sf])}
+    ${fxbrColumn('Final', FINAL_FIXTURES, true)}
+  </div>`;
+
+  const isMobile = window.matchMedia('(max-width: 700px)').matches;
+  el.innerHTML = isMobile ? mobileHTML : desktopHTML;
+  el._fxbrWasMobile = isMobile;
+  // Open the first mobile accordion section by default.
+  if (isMobile) {
+    const firstHead = el.querySelector('.fxbr-acc-head');
+    const firstBody = el.querySelector('.fxbr-acc-body');
+    if (firstHead && firstBody) { firstHead.classList.add('open'); firstBody.classList.add('open'); }
+  }
+}
+
+// Re-render the bracket if the viewport crosses the mobile breakpoint while the
+// Bracket view is open (desktop tree ↔ mobile accordion swap). Debounced.
+let _fxbrResizeTimer = null;
+window.addEventListener('resize', () => {
+  if (fixtureView !== 'bracket') return;
+  const el = document.getElementById('fixtures-bracket');
+  if (!el || el.style.display === 'none') return;
+  clearTimeout(_fxbrResizeTimer);
+  _fxbrResizeTimer = setTimeout(() => {
+    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    if (el._fxbrWasMobile !== isMobile) renderFixtureBracket();
+  }, 200);
+});
+
 // Live-capture a fixture score input into state (without full save)
 function onFixtureInput(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};
@@ -2671,7 +2936,10 @@ function onFixtureInput(gmId) {
 // lock (open until kickoff). Also maintains the `winner` (who advances) field:
 // a decisive score sets it to the leading side; a draw leaves whatever the user
 // picked via the Advances toggle.
-function onKoFixtureInput(koId) {
+// Shared core: apply a KO score edit to state (lock-checked, advance-maintained).
+// Returns { ok, entry, decisive } so each view can patch its own DOM. Single
+// source of truth for both the Rounds list and the Bracket tree.
+function applyKoScoreEdit(koId, aStr, bStr) {
   if (!state.fixturePreds) state.fixturePreds = {};
   const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
     .find(x => x.id === koId);
@@ -2682,34 +2950,59 @@ function onKoFixtureInput(koId) {
       toast(lock.reason === 'unscheduled'
         ? 'This match is not open for predictions yet.'
         : 'This match is locked — kickoff has passed.', 'info');
-      renderFixtures();
-      return;
+      return { ok: false };
     }
   }
-  const a = document.getElementById('fx-' + koId + '-a').value;
-  const b = document.getElementById('fx-' + koId + '-b').value;
   const prev = state.fixturePreds[koId] || {};
   const entry = {};
-  if (a !== '') entry.scoreA = parseInt(a);
-  if (b !== '') entry.scoreB = parseInt(b);
-  // Maintain advance pick:
+  if (aStr !== '') entry.scoreA = parseInt(aStr);
+  if (bStr !== '') entry.scoreB = parseInt(bStr);
   if (entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB) {
-    // Decisive score → the leading team advances. Override any stale pick.
-    entry.winner = entry.scoreA > entry.scoreB ? 'a' : 'b';
+    entry.winner = entry.scoreA > entry.scoreB ? 'a' : 'b'; // decisive → leader
   } else if (prev.winner) {
-    // Draw or incomplete score → keep the user's explicit Advances pick.
-    entry.winner = prev.winner;
+    entry.winner = prev.winner; // draw/incomplete → keep explicit pick
   }
   state.fixturePreds[koId] = entry;
   saveState();
   scheduleFixtureAutosave();
-  // Update the Advances toggle highlight WITHOUT re-rendering (which would steal
-  // focus from the number input mid-type). Also enable/disable the buttons:
-  // decisive score → locked (auto-derived); draw/incomplete → manual pick.
+  const decisive = entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB;
+  return { ok: true, entry, decisive };
+}
+
+// Shared core: apply an advance pick (manual; rejected on a decisive score).
+function applyKoAdvanceEdit(koId, side) {
+  if (!state.fixturePreds) state.fixturePreds = {};
+  const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+    .find(x => x.id === koId);
+  if (fx) {
+    const lock = koFixtureLockState({ ist: fx.ist });
+    const res = state.room && state.room.results && state.room.results[koId];
+    if (lock.locked && !res) {
+      toast('This match is locked — kickoff has passed.', 'info');
+      return { ok: false };
+    }
+  }
+  const entry = Object.assign({}, state.fixturePreds[koId] || {});
+  if (entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB) {
+    return { ok: false }; // decisive score determines advancer; ignore stray pick
+  }
+  entry.winner = side;
+  state.fixturePreds[koId] = entry;
+  saveState();
+  scheduleFixtureAutosave();
+  return { ok: true, entry };
+}
+
+function onKoFixtureInput(koId) {
+  const a = document.getElementById('fx-' + koId + '-a').value;
+  const b = document.getElementById('fx-' + koId + '-b').value;
+  const r = applyKoScoreEdit(koId, a, b);
+  if (!r.ok) { renderFixtures(); return; }
+  const entry = r.entry, decisive = r.decisive;
+  // Update the Advances toggle highlight WITHOUT re-rendering (focus-safe).
   const wrap = document.getElementById('fx-' + koId + '-a');
   const row = wrap ? wrap.closest('.fx-row-ko') : null;
   if (row) {
-    const decisive = entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB;
     const advWrap = row.querySelector('.fx-adv');
     if (advWrap) advWrap.classList.toggle('fx-adv-auto-on', decisive);
     const hint = row.querySelector('.fx-adv-auto');
@@ -2723,32 +3016,10 @@ function onKoFixtureInput(koId) {
   }
 }
 
-// Explicit "Advances" toggle for a knockout match (who goes through). Sets the
-// winner side; if the current score is a draw this is the only way to express
-// who wins the tie (ET/penalties).
+// Explicit "Advances" toggle for a knockout match (Rounds list view).
 function setKoAdvance(koId, side) {
-  if (!state.fixturePreds) state.fixturePreds = {};
-  const fx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
-    .find(x => x.id === koId);
-  if (fx) {
-    const lock = koFixtureLockState({ ist: fx.ist });
-    const res = state.room && state.room.results && state.room.results[koId];
-    if (lock.locked && !res) {
-      toast('This match is locked — kickoff has passed.', 'info');
-      return;
-    }
-  }
-  const entry = Object.assign({}, state.fixturePreds[koId] || {});
-  // Guard: a decisive score determines the advancer. Manual picking is only
-  // for draws / incomplete scores. Ignore stray clicks on a decisive score.
-  if (entry.scoreA !== undefined && entry.scoreB !== undefined && entry.scoreA !== entry.scoreB) {
-    return;
-  }
-  entry.winner = side;
-  state.fixturePreds[koId] = entry;
-  saveState();
-  scheduleFixtureAutosave();
-  // Update just this row's toggle highlight (no full re-render).
+  const r = applyKoAdvanceEdit(koId, side);
+  if (!r.ok) return;
   const aEl = document.getElementById('fx-' + koId + '-a');
   const row = aEl ? aEl.closest('.fx-row-ko') : null;
   if (row) {
@@ -2756,6 +3027,37 @@ function setKoAdvance(koId, side) {
       btn.classList.toggle('active', (i === 0 && side === 'a') || (i === 1 && side === 'b'));
     });
   }
+}
+
+// Bracket-tree score input → shared core + focus-safe patch of THIS cell.
+function onKoBracketInput(koId) {
+  const aEl = document.getElementById('fxbr-' + koId + '-a');
+  const bEl = document.getElementById('fxbr-' + koId + '-b');
+  if (!aEl || !bEl) return;
+  const r = applyKoScoreEdit(koId, aEl.value, bEl.value);
+  if (!r.ok) { renderFixtureBracket(); return; }
+  patchBracketCell(koId, r.entry, r.decisive);
+}
+
+// Bracket-tree flag tap → advance pick (manual; draws only).
+function setKoBracketAdvance(koId, side) {
+  const r = applyKoAdvanceEdit(koId, side);
+  if (!r.ok) return;
+  patchBracketCell(koId, r.entry, false);
+}
+
+// Focus-safe DOM patch for a single bracket cell's advancer rings.
+function patchBracketCell(koId, entry, decisive) {
+  const aEl = document.getElementById('fxbr-' + koId + '-a');
+  const cell = aEl ? aEl.closest('.fxbr-cell') : null;
+  if (!cell) return;
+  const flags = cell.querySelectorAll('.fxbr-flag-btn');
+  flags.forEach((btn, i) => {
+    // On a decisive score the leader is auto-advancer and flags lock.
+    btn.disabled = decisive || btn.dataset.locked === '1';
+    const isAdv = entry.winner && ((i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
+    btn.classList.toggle('fxbr-adv', !!isAdv);
+  });
 }
 function clearFixturePrediction(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};

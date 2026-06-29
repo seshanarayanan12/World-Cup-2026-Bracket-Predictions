@@ -193,16 +193,21 @@
   .fx-view-btn.active { background: var(--gold-dim); color: var(--gold); }
   /* Desktop: 9-column converging tree, left flows →, right mirrors ←. */
   .fxbr-wrap { overflow-x: auto; padding: 4px 0 18px; }
-  .fxbr-tree { display: flex; align-items: stretch; gap: 6px; min-width: 1520px; }
-  .fxbr-col { display: flex; flex-direction: column; justify-content: space-around; flex: 1 1 0; min-width: 150px; gap: 8px; }
-  .fxbr-col.fxbr-final-col { flex: 0 0 168px; justify-content: center; }
-  .fxbr-col-head { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; padding-bottom: 8px; }
+  .fxbr-head-row { display: flex; gap: 6px; min-width: 1826px; margin-bottom: 10px; }
+  .fxbr-head-row .fxbr-col-head { flex: 1 1 0; min-width: 196px; }
+  .fxbr-head-row .fxbr-final-col-head { flex: 0 0 210px; min-width: 0; }
+  .fxbr-tree { display: flex; align-items: stretch; gap: 6px; min-width: 1826px; }
+  .fxbr-col { display: flex; flex-direction: column; justify-content: space-around; flex: 1 1 0; min-width: 196px; gap: 8px; }
+  .fxbr-col.fxbr-final-col { flex: 0 0 210px; justify-content: center; }
+  .fxbr-col-head { text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding-bottom: 0; }
+  /* In-column heads are replaced by the aligned header row on desktop. */
+  .fxbr-col > .fxbr-col-head { display: none; }
   .fxbr-cell { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; }
   .fxbr-cell.fxbr-locked { opacity: 0.55; }
   .fxbr-cell.fxbr-final { border-color: rgba(245,166,35,0.5); box-shadow: 0 0 0 1px rgba(245,166,35,0.15); }
   .fxbr-cell-label { font-size: 8px; color: var(--muted); text-align: center; letter-spacing: 0.4px; }
-  .fxbr-vs { display: flex; align-items: center; justify-content: center; gap: 4px; }
-  .fxbr-team { display: flex; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0; }
+  .fxbr-vs { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; }
+  .fxbr-team { display: flex; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0; overflow: visible; }
   .fxbr-team-a { justify-content: flex-end; padding-left: 2px; }
   .fxbr-team-b { justify-content: flex-start; padding-right: 2px; }
   .fxbr-predict { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
@@ -220,6 +225,51 @@
   .fxbr-score-in:disabled { opacity: 0.6; }
   .fxbr-foot { font-size: 8px; text-align: center; color: var(--muted); margin-top: 1px; }
   .fxbr-foot.fxbr-pts { color: var(--gold); font-weight: 700; }
+  /* Connector arrow overlay between rounds. */
+  .fxbr-tree-stage { position: relative; min-width: 1826px; }
+  .fxbr-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+  .fxbr-tree-stage .fxbr-tree { position: relative; z-index: 1; min-width: 0; }
+  .fxbr-arrow-path { fill: none; stroke: var(--border-bright); stroke-width: 1.6; opacity: 0.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.25s, opacity 0.25s, stroke-width 0.25s; }
+  .fxbr-arrow-head { fill: var(--border-bright); opacity: 0.5; transition: fill 0.25s, opacity 0.25s; }
+  .fxbr-arrow-live .fxbr-arrow-path {
+    stroke: var(--gold); opacity: 1; stroke-width: 3.2;
+    filter: drop-shadow(0 0 2px rgba(245,166,35,0.95))
+            drop-shadow(0 0 6px rgba(245,166,35,0.85))
+            drop-shadow(0 0 14px rgba(245,166,35,0.55));
+    animation: fxbrPulse 1.8s ease-in-out infinite;
+  }
+  .fxbr-arrow-live .fxbr-arrow-head {
+    fill: var(--gold); opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(245,166,35,0.95))
+            drop-shadow(0 0 6px rgba(245,166,35,0.8))
+            drop-shadow(0 0 12px rgba(245,166,35,0.5));
+    animation: fxbrPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes fxbrPulse {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(245,166,35,0.9)) drop-shadow(0 0 5px rgba(245,166,35,0.6)) drop-shadow(0 0 11px rgba(245,166,35,0.4)); }
+    50%      { filter: drop-shadow(0 0 3px rgba(245,166,35,1)) drop-shadow(0 0 9px rgba(245,166,35,0.9)) drop-shadow(0 0 18px rgba(245,166,35,0.65)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fxbr-arrow-live .fxbr-arrow-path, .fxbr-arrow-live .fxbr-arrow-head { animation: none; }
+  }
+  /* Incremental card growth toward the Final (desktop only). */
+  .fxbr-sz-qf { padding: 9px 12px; gap: 6px; }
+  .fxbr-sz-qf .fxbr-flag-btn .flag { width: 25px; height: 18px; }
+  .fxbr-sz-qf .fxbr-code { font-size: 11px; }
+  .fxbr-sz-qf .fxbr-score-in { width: 33px; height: 33px; font-size: 15px; }
+  .fxbr-sz-qf .fxbr-cell-label { font-size: 9px; }
+  .fxbr-sz-sf { padding: 11px 14px; gap: 7px; }
+  .fxbr-sz-sf .fxbr-flag-btn .flag { width: 28px; height: 20px; }
+  .fxbr-sz-sf .fxbr-code { font-size: 12px; }
+  .fxbr-sz-sf .fxbr-score-in { width: 36px; height: 36px; font-size: 16px; }
+  .fxbr-sz-sf .fxbr-cell-label { font-size: 9px; }
+  .fxbr-sz-sf .fxbr-foot { font-size: 9px; }
+  .fxbr-sz-final { padding: 14px 16px; gap: 9px; }
+  .fxbr-sz-final .fxbr-flag-btn .flag { width: 32px; height: 23px; }
+  .fxbr-sz-final .fxbr-code { font-size: 14px; }
+  .fxbr-sz-final .fxbr-score-in { width: 42px; height: 42px; font-size: 19px; }
+  .fxbr-sz-final .fxbr-cell-label { font-size: 10px; }
+  .fxbr-sz-final .fxbr-foot { font-size: 10px; }
   /* Mobile: vertical accordion by round (R32→Final). */
   @media (max-width: 700px) {
     .fxbr-wrap { overflow-x: visible; }
@@ -231,6 +281,14 @@
     .fxbr-acc-body { display: none; flex-direction: column; gap: 8px; padding: 8px 0 4px; }
     .fxbr-acc-body.open { display: flex; }
     .fxbr-col-head { display: none; }
+    .fxbr-head-row { display: none; }
+    /* Mobile accordion cards stay uniform; ignore desktop incremental sizing. */
+    .fxbr-sz-qf, .fxbr-sz-sf, .fxbr-sz-final { padding: 9px 12px; gap: 5px; }
+    .fxbr-sz-qf .fxbr-flag-btn .flag, .fxbr-sz-sf .fxbr-flag-btn .flag, .fxbr-sz-final .fxbr-flag-btn .flag { width: 26px; height: 19px; }
+    .fxbr-sz-qf .fxbr-code, .fxbr-sz-sf .fxbr-code, .fxbr-sz-final .fxbr-code { font-size: 12px; }
+    .fxbr-sz-qf .fxbr-score-in, .fxbr-sz-sf .fxbr-score-in, .fxbr-sz-final .fxbr-score-in { width: 34px; height: 34px; font-size: 15px; }
+    .fxbr-sz-qf .fxbr-cell-label, .fxbr-sz-sf .fxbr-cell-label, .fxbr-sz-final .fxbr-cell-label { font-size: 10px; }
+    .fxbr-sz-qf .fxbr-foot, .fxbr-sz-sf .fxbr-foot, .fxbr-sz-final .fxbr-foot { font-size: 10px; }
     .fxbr-cell { padding: 9px 12px; }
     .fxbr-flag-btn .flag { width: 26px; height: 19px; }
     .fxbr-code { font-size: 12px; }
@@ -2745,7 +2803,7 @@ function shortSlot(slot) {
 }
 
 // Render one editable bracket cell for a KO fixture id.
-function fxbrCell(fx, isFinal) {
+function fxbrCell(fx, isFinal, roundClass = '') {
   const now = nowInstant();
   const koId = fx.id;
   const a = fxbrSide(fx, 'a');
@@ -2810,7 +2868,7 @@ function fxbrCell(fx, isFinal) {
     foot = `<div class="fxbr-foot">tap flag: who advances</div>`;
   }
 
-  return `<div class="fxbr-cell${isFinal ? ' fxbr-final' : ''}${lock.locked && !res ? ' fxbr-locked' : ''}">
+  return `<div class="fxbr-cell${roundClass ? ' ' + roundClass : ''}${isFinal ? ' fxbr-final' : ''}${lock.locked && !res ? ' fxbr-locked' : ''}" data-fxid="${koId}" data-adv="${advSide ? '1' : '0'}">
     <div class="fxbr-cell-label">${fx.label || koId}</div>
     <div class="fxbr-vs">
       ${teamBlock(a, 'a')}
@@ -2822,8 +2880,8 @@ function fxbrCell(fx, isFinal) {
 }
 
 // Build a single round column (desktop) / accordion section (mobile).
-function fxbrColumn(headLabel, fixtures, isFinal) {
-  const cells = fixtures.map(fx => fxbrCell(fx, isFinal)).join('');
+function fxbrColumn(headLabel, fixtures, isFinal, roundClass = '') {
+  const cells = fixtures.map(fx => fxbrCell(fx, isFinal, roundClass)).join('');
   return `<div class="fxbr-col${isFinal ? ' fxbr-final-col' : ''}">
     <div class="fxbr-col-head">${headLabel}</div>
     <button class="fxbr-acc-head" onclick="toggleBracketAcc(this)">${headLabel}<span class="fxbr-acc-caret">▶</span></button>
@@ -2851,17 +2909,31 @@ function renderFixtureBracket() {
   // small screens via the accordion heads (each column is one round-half, but
   // mobile shows them sequentially, which already reads R32-L, R16-L … then
   // R32-R last). To keep mobile strictly round-grouped we merge halves per round.
-  const desktopHTML = `<div class="fxbr-wrap"><div class="fxbr-tree">
+  const desktopHTML = `<div class="fxbr-wrap">
+    <div class="fxbr-head-row">
+      <div class="fxbr-col-head">R32</div>
+      <div class="fxbr-col-head">R16</div>
+      <div class="fxbr-col-head">QF</div>
+      <div class="fxbr-col-head">SF</div>
+      <div class="fxbr-col-head fxbr-final-col-head">Final</div>
+      <div class="fxbr-col-head">SF</div>
+      <div class="fxbr-col-head">QF</div>
+      <div class="fxbr-col-head">R16</div>
+      <div class="fxbr-col-head">R32</div>
+    </div>
+    <div class="fxbr-tree-stage">
+    <svg class="fxbr-arrows" aria-hidden="true"></svg>
+    <div class="fxbr-tree">
     ${fxbrColumn('R32', L_r32)}
     ${fxbrColumn('R16', L_r16)}
-    ${fxbrColumn('QF', L_qf)}
-    ${fxbrColumn('SF', L_sf)}
-    ${fxbrColumn('Final', FINAL_FIXTURES, true)}
-    ${fxbrColumn('SF', R_sf)}
-    ${fxbrColumn('QF', R_qf)}
+    ${fxbrColumn('QF', L_qf, false, 'fxbr-sz-qf')}
+    ${fxbrColumn('SF', L_sf, false, 'fxbr-sz-sf')}
+    ${fxbrColumn('Final', FINAL_FIXTURES, true, 'fxbr-sz-final')}
+    ${fxbrColumn('SF', R_sf, false, 'fxbr-sz-sf')}
+    ${fxbrColumn('QF', R_qf, false, 'fxbr-sz-qf')}
     ${fxbrColumn('R16', R_r16)}
     ${fxbrColumn('R32', R_r32)}
-  </div></div>`;
+  </div></div></div>`;
 
   // Mobile accordion: one section per round with BOTH halves, R32→Final.
   const mobileHTML = `<div class="fxbr-wrap fxbr-mobile">
@@ -2880,7 +2952,78 @@ function renderFixtureBracket() {
     const firstHead = el.querySelector('.fxbr-acc-head');
     const firstBody = el.querySelector('.fxbr-acc-body');
     if (firstHead && firstBody) { firstHead.classList.add('open'); firstBody.classList.add('open'); }
+  } else {
+    // Draw connector arrows after layout settles (needs real cell rects).
+    requestAnimationFrame(() => requestAnimationFrame(drawFxbrArrows));
   }
+}
+
+// Source-fixture wiring per target fixture, derived from W- side references.
+// { targetId: [srcIdForSideA, srcIdForSideB] }
+function fxbrWiring() {
+  const map = {};
+  [...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES].forEach(fx => {
+    const src = [fx.a, fx.b].map(s => (typeof s === 'string' && s.startsWith('W-')) ? s.slice(2) : null);
+    map[fx.id] = src;
+  });
+  return map;
+}
+
+// Draw SVG connectors from each source cell to its next-round target cell.
+// A connector glows gold once its SOURCE cell has produced an advancer.
+function drawFxbrArrows() {
+  const el = document.getElementById('fixtures-bracket');
+  if (!el) return;
+  const stage = el.querySelector('.fxbr-tree-stage');
+  const svg = el.querySelector('.fxbr-arrows');
+  if (!stage || !svg) return;
+
+  const sb = stage.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${stage.scrollWidth} ${stage.scrollHeight}`);
+  svg.setAttribute('width', stage.scrollWidth);
+  svg.setAttribute('height', stage.scrollHeight);
+
+  const cellRect = (fxid) => {
+    const c = stage.querySelector(`.fxbr-cell[data-fxid="${fxid}"]`);
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { el: c, left: r.left - sb.left, right: r.right - sb.left,
+             top: r.top - sb.top, bottom: r.bottom - sb.top,
+             midY: r.top - sb.top + r.height / 2 };
+  };
+
+  const wiring = fxbrWiring();
+  const NS = 'http://www.w3.org/2000/svg';
+  let out = '';
+
+  Object.keys(wiring).forEach(targetId => {
+    const tgt = cellRect(targetId);
+    if (!tgt) return;
+    wiring[targetId].forEach(srcId => {
+      if (!srcId) return;
+      const src = cellRect(srcId);
+      if (!src) return;
+      // Direction: source on the left of target → flow right; else flow left.
+      const flowRight = src.right <= tgt.left + 1;
+      const x1 = flowRight ? src.right : src.left;          // exit source inner edge
+      const y1 = src.midY;
+      const x2 = flowRight ? tgt.left : tgt.right;           // enter target inner edge
+      const y2 = tgt.midY;
+      const dir = flowRight ? 1 : -1;
+      const midX = x1 + (x2 - x1) / 2;
+      // Smooth S-curve from source edge into target edge.
+      const d = `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2 - dir * 9} ${y2}`;
+      // Arrowhead at target edge.
+      const hx = x2, hy = y2;
+      const head = `M ${hx} ${hy} L ${hx - dir * 9} ${hy - 5} L ${hx - dir * 9} ${hy + 5} Z`;
+      const live = src.el.getAttribute('data-adv') === '1' ? ' fxbr-arrow-live' : '';
+      out += `<g class="fxbr-arrow${live}">`
+           + `<path class="fxbr-arrow-path" d="${d}"></path>`
+           + `<path class="fxbr-arrow-head" d="${head}"></path>`
+           + `</g>`;
+    });
+  });
+  svg.innerHTML = out;
 }
 
 // Re-render the bracket if the viewport crosses the mobile breakpoint while the
@@ -2893,7 +3036,8 @@ window.addEventListener('resize', () => {
   clearTimeout(_fxbrResizeTimer);
   _fxbrResizeTimer = setTimeout(() => {
     const isMobile = window.matchMedia('(max-width: 700px)').matches;
-    if (el._fxbrWasMobile !== isMobile) renderFixtureBracket();
+    if (el._fxbrWasMobile !== isMobile) { renderFixtureBracket(); return; }
+    if (!isMobile) drawFxbrArrows();
   }, 200);
 });
 
@@ -3058,6 +3202,11 @@ function patchBracketCell(koId, entry, decisive) {
     const isAdv = entry.winner && ((i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
     btn.classList.toggle('fxbr-adv', !!isAdv);
   });
+  // Reflect advancer state on the cell and refresh connector glow (desktop).
+  cell.setAttribute('data-adv', entry.winner ? '1' : '0');
+  if (!window.matchMedia('(max-width: 700px)').matches) {
+    if (document.querySelector('.fxbr-arrows')) drawFxbrArrows();
+  }
 }
 function clearFixturePrediction(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};

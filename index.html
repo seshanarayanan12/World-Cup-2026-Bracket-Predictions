@@ -1043,30 +1043,30 @@ const R32_FIXTURES = [
 //   M89=W74/W77  M90=W73/W75  M91=W76/W78  M92=W79/W80
 //   M93=W83/W84  M94=W81/W82  M95=W85/W86  M96=W87/W88
 const R16_FIXTURES = [
-  { id: 'r16_1', a: 'W-r32_2',  b: 'W-r32_5',  label: 'Match 89', date: '2026-07-04' },
-  { id: 'r16_2', a: 'W-r32_1',  b: 'W-r32_3',  label: 'Match 90', date: '2026-07-04' },
-  { id: 'r16_3', a: 'W-r32_4',  b: 'W-r32_6',  label: 'Match 91', date: '2026-07-05' },
-  { id: 'r16_4', a: 'W-r32_7',  b: 'W-r32_8',  label: 'Match 92', date: '2026-07-05' },
-  { id: 'r16_5', a: 'W-r32_11', b: 'W-r32_12', label: 'Match 93', date: '2026-07-06' },
-  { id: 'r16_6', a: 'W-r32_9',  b: 'W-r32_10', label: 'Match 94', date: '2026-07-06' },
-  { id: 'r16_7', a: 'W-r32_13', b: 'W-r32_14', label: 'Match 95', date: '2026-07-07' },
-  { id: 'r16_8', a: 'W-r32_15', b: 'W-r32_16', label: 'Match 96', date: '2026-07-07' },
+  { id: 'r16_1', a: 'W-r32_2',  b: 'W-r32_5',  label: 'Match 89', date: '2026-07-05', ist: '2026-07-05T02:30' },
+  { id: 'r16_2', a: 'W-r32_1',  b: 'W-r32_3',  label: 'Match 90', date: '2026-07-04', ist: '2026-07-04T22:30' },
+  { id: 'r16_3', a: 'W-r32_4',  b: 'W-r32_6',  label: 'Match 91', date: '2026-07-06', ist: '2026-07-06T01:30' },
+  { id: 'r16_4', a: 'W-r32_7',  b: 'W-r32_8',  label: 'Match 92', date: '2026-07-06', ist: '2026-07-06T05:30' },
+  { id: 'r16_5', a: 'W-r32_11', b: 'W-r32_12', label: 'Match 93', date: '2026-07-07', ist: '2026-07-07T00:30' },
+  { id: 'r16_6', a: 'W-r32_9',  b: 'W-r32_10', label: 'Match 94', date: '2026-07-07', ist: '2026-07-07T05:30' },
+  { id: 'r16_7', a: 'W-r32_13', b: 'W-r32_14', label: 'Match 95', date: '2026-07-07', ist: '2026-07-07T21:30' },
+  { id: 'r16_8', a: 'W-r32_15', b: 'W-r32_16', label: 'Match 96', date: '2026-07-08', ist: '2026-07-08T01:30' },
 ];
 
 const QF_FIXTURES = [
-  { id: 'qf_1', a: 'W-r16_1', b: 'W-r16_2', label: 'Quarter-Final 1', date: '2026-07-09' },
-  { id: 'qf_2', a: 'W-r16_3', b: 'W-r16_4', label: 'Quarter-Final 2', date: '2026-07-10' },
-  { id: 'qf_3', a: 'W-r16_5', b: 'W-r16_6', label: 'Quarter-Final 3', date: '2026-07-10' },
-  { id: 'qf_4', a: 'W-r16_7', b: 'W-r16_8', label: 'Quarter-Final 4', date: '2026-07-11' },
+  { id: 'qf_1', a: 'W-r16_1', b: 'W-r16_2', label: 'Quarter-Final 1', date: '2026-07-10', ist: '2026-07-10T01:30' },
+  { id: 'qf_2', a: 'W-r16_3', b: 'W-r16_4', label: 'Quarter-Final 2', date: '2026-07-11', ist: '2026-07-11T00:30' },
+  { id: 'qf_3', a: 'W-r16_5', b: 'W-r16_6', label: 'Quarter-Final 3', date: '2026-07-12', ist: '2026-07-12T02:30' },
+  { id: 'qf_4', a: 'W-r16_7', b: 'W-r16_8', label: 'Quarter-Final 4', date: '2026-07-12', ist: '2026-07-12T06:30' },
 ];
 
 const SF_FIXTURES = [
-  { id: 'sf_1', a: 'W-qf_1', b: 'W-qf_2', label: 'Semi-Final 1', date: '2026-07-14' },
-  { id: 'sf_2', a: 'W-qf_3', b: 'W-qf_4', label: 'Semi-Final 2', date: '2026-07-15' },
+  { id: 'sf_1', a: 'W-qf_1', b: 'W-qf_2', label: 'Semi-Final 1', date: '2026-07-15', ist: '2026-07-15T00:30' },
+  { id: 'sf_2', a: 'W-qf_3', b: 'W-qf_4', label: 'Semi-Final 2', date: '2026-07-16', ist: '2026-07-16T00:30' },
 ];
 
 const FINAL_FIXTURES = [
-  { id: 'final_1', a: 'W-sf_1', b: 'W-sf_2', label: '🏆 World Cup Final', date: '2026-07-19' },
+  { id: 'final_1', a: 'W-sf_1', b: 'W-sf_2', label: '🏆 World Cup Final', date: '2026-07-20', ist: '2026-07-20T00:30' },
 ];
 
 const ROUND_PTS = { r32: 5, r16: 5, qf: 8, sf: 12, final: 20 };

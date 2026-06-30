@@ -4649,21 +4649,32 @@ async function buildSyncDiff() {
     const ta = getTeamForFixtureSide(fixture, 'a');
     const tb = getTeamForFixtureSide(fixture, 'b');
     const flipped = (ta && ta.key === awayKey);
-    // IMPORTANT: in v4, score.fullTime is the RUNNING total — for ET/penalty
-    // matches it includes extra-time goals (and rolls in the shootout), NOT the
-    // 90-minute score. The 90-minute score lives in score.regularTime. We score
-    // the exact-scoreline bonus on the 90-minute score, so prefer regularTime
-    // when present (it only appears for ET/pens finishes).
+    // EXACT-SCORE TARGET (Option A: "score when the match was decided"):
+    //   • Decided in 90'        → regularTime
+    //   • Decided in extra time → regularTime + extraTime (e.g. 2–2 then 3–2)
+    //   • Decided on penalties  → regularTime + extraTime (the 120' draw, e.g. 2–2)
+    // We deliberately EXCLUDE the shootout — penalties aren't goals — and we must
+    // NOT use score.fullTime, which rolls the shootout tally into the total
+    // (e.g. a 1–1 ET draw shows fullTime 4–5). So the exact target is the goal
+    // score after extra time: regularTime + extraTime.
     const duration = (m.score && m.score.duration) || 'REGULAR';
     const reg = m.score && m.score.regularTime;
-    const has90 = reg && reg.home !== null && reg.home !== undefined
-                      && reg.away !== null && reg.away !== undefined;
-    const baseHome = has90 ? reg.home : m.score.fullTime.home;
-    const baseAway = has90 ? reg.away : m.score.fullTime.away;
+    const et  = m.score && m.score.extraTime;
+    const n = v => (v === null || v === undefined) ? null : Number(v);
+    const has90 = reg && n(reg.home) !== null && n(reg.away) !== null;
+    // Base = regulation goals (fall back to fullTime only if regularTime missing,
+    // which happens for plain 90' finishes that omit the regularTime block).
+    let baseHome = has90 ? n(reg.home) : n(m.score.fullTime.home);
+    let baseAway = has90 ? n(reg.away) : n(m.score.fullTime.away);
+    // Add extra-time goals when present (ET- or penalty-decided matches).
+    if (et && n(et.home) !== null && n(et.away) !== null) {
+      baseHome += n(et.home);
+      baseAway += n(et.away);
+    }
     const scoreA = flipped ? baseAway : baseHome;
     const scoreB = flipped ? baseHome : baseAway;
-    // The final/full-time score (after ET, excluding the shootout tally) for
-    // display only — lets the UI show "1–1 (4–2 pens)" style annotations.
+    // The full-time aggregate as the API reports it (includes shootout) for
+    // display only — lets the UI show "2–2 (4–2 pens)" style annotations.
     const ftHome = (m.score && m.score.fullTime && m.score.fullTime.home != null) ? m.score.fullTime.home : null;
     const ftAway = (m.score && m.score.fullTime && m.score.fullTime.away != null) ? m.score.fullTime.away : null;
     const fullA = ftHome === null ? null : (flipped ? ftAway : ftHome);

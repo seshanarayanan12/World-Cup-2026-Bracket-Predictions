@@ -2447,11 +2447,24 @@ function subscribeToRoom(code) {
 
           state.room = fresh;
           saveRoomLocal(state.room);
+          // Keep the current user's working predictions in sync with the fresh
+          // room blob so the Fixtures bracket reflects external changes (manual
+          // DB edits, another device, auto-sync) without a manual reload. Skip
+          // if the user is mid-edit (a bracket input is focused) so we never
+          // clobber an uncommitted keystroke.
+          const editing = document.activeElement &&
+            (document.activeElement.classList.contains('fx-score-in') ||
+             document.activeElement.classList.contains('fxbr-score-in'));
+          if (state.user && !editing) {
+            const mine = fresh.predictions && fresh.predictions[state.user.id];
+            if (mine && mine.fixtures) state.fixturePreds = mine.fixtures;
+          }
           showRoomInfo();
           renderLeaderboard();
           renderKnockout();
           renderTourneyBanner();
           renderMyPredsSummary();
+          if (roomMode() === 'fixture' && !editing) renderFixtures();
         }
       })
     .subscribe();
@@ -4661,6 +4674,48 @@ async function buildSyncDiff() {
     else if (m.score.winner === 'AWAY_TEAM') winner = awayKey;
     else if (scoreA > scoreB) winner = flipped ? awayKey : homeKey;
     else if (scoreB > scoreA) winner = flipped ? homeKey : awayKey;
+
+    // Fallback: football-data.org sometimes finishes a shootout/ET match but
+    // leaves score.winner = null while the decisive margin sits in other score
+    // fields. A drawn 90-min score (regularTime) settled by pens/ET means the
+    // advancer is whoever has more goals once the shootout/ET tally is included.
+    // Derivation order (most reliable first):
+    //   1) shootout margin = fullTime − regularTime  (isolates pens cleanly)
+    //   2) penalties.home vs penalties.away
+    //   3) fullTime.home vs fullTime.away (covers ET-only finishes)
+    // Each compares HOME vs AWAY, then maps to our side via `flipped`.
+    if (!winner) {
+      const sc = m.score || {};
+      const pick = (homeN, awayN) =>
+        homeN > awayN ? (flipped ? awayKey : homeKey)
+      : awayN > homeN ? (flipped ? homeKey : awayKey)
+      : null;
+      const ft = sc.fullTime, rt = sc.regularTime, pen = sc.penalties;
+      const num = v => (v === null || v === undefined) ? null : Number(v);
+      // 1) shootout margin
+      if (ft && rt && num(ft.home) !== null && num(rt.home) !== null) {
+        winner = pick(num(ft.home) - num(rt.home), num(ft.away) - num(rt.away));
+      }
+      // 2) penalties tally
+      if (!winner && pen && num(pen.home) !== null && num(pen.home) !== num(pen.away)) {
+        winner = pick(num(pen.home), num(pen.away));
+      }
+      // 3) full-time aggregate (ET-decided, no shootout)
+      if (!winner && ft && num(ft.home) !== null && num(ft.home) !== num(ft.away)) {
+        winner = pick(num(ft.home), num(ft.away));
+      }
+    }
+
+    // A knockout match cannot truly end level: a drawn 90-min score must be
+    // settled by ET/penalties. If we STILL have no winner after the fallbacks,
+    // the API genuinely hasn't published a decisive outcome yet (match not
+    // finished, or shootout result missing). Writing a winnerless KO result
+    // would award nobody the +5 advancer points and leave the next round unable
+    // to populate — so skip it until a winner is known.
+    if (!winner) {
+      warnings.push(`${homeKey} vs ${awayKey} (${roundKey.toUpperCase()}): drawn ${scoreA}–${scoreB}, no decisive winner from API yet — not recorded`);
+      return;
+    }
     const entry = {
       resKey: fixture.id,
       label: `${homeKey} vs ${awayKey} (${roundKey.toUpperCase()})`,

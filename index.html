@@ -4195,7 +4195,12 @@ function computeScores(room) {
         if (pts) {
           s.knockoutPts += pts;
           s.total += pts;
-          if (pts >= KO_FIXTURE_WINNER_PTS) s.correctWinners++;
+          // "Exact Scores" counts EXACT 90-min scoreline hits only (the +3
+          // bonus), consistent with the group-stage tally. A correct advancer
+          // (+5) without the exact scoreline must NOT count here.
+          if (pred.scoreA === enriched.scoreA && pred.scoreB === enriched.scoreB) {
+            s.correctWinners++;
+          }
         }
       });
     } else {

@@ -2276,13 +2276,41 @@ function fmtScorePred(p) {
 function diffFixturePreds(oldP, newP) {
   const out = [];
   const keys = new Set([...Object.keys(oldP || {}), ...Object.keys(newP || {})]);
-  keys.forEach(gmId => {
-    const a = fmtScorePred((oldP || {})[gmId]);
-    const b = fmtScorePred((newP || {})[gmId]);
+  keys.forEach(id => {
+    const oldEntry = (oldP || {})[id];
+    const newEntry = (newP || {})[id];
+
+    // Knockout fixture ids ('r32_1', 'r16_3', 'qf_2', 'sf_1', 'final')
+    // are NOT indices into GROUP_FIXTURES — resolve them against the KO
+    // fixture tables and log both the scoreline AND the advancer pick.
+    if (!id.startsWith('gm_')) {
+      const koFx = [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
+        .find(x => x.id === id);
+      if (koFx) {
+        const nameFor = (k) => (typeof TEAMS !== 'undefined' && TEAMS[k] && TEAMS[k].name) || k;
+        const teamA = koFx.teamA ? nameFor(koFx.teamA) : koFx.a;
+        const teamB = koFx.teamB ? nameFor(koFx.teamB) : koFx.b;
+        const label = `${teamA} v ${teamB}`;
+        // Score change.
+        const as = fmtScorePred(oldEntry), bs = fmtScorePred(newEntry);
+        if (as !== bs) out.push({ item: label, from: as, to: bs });
+        // Advancer change (side letter → team name, when known).
+        const advName = (side) =>
+          side === 'a' ? teamA : side === 'b' ? teamB : '—';
+        const aw = advName((oldEntry || {}).winner);
+        const bw = advName((newEntry || {}).winner);
+        if (aw !== bw) out.push({ item: `${label} — advances`, from: aw, to: bw });
+        return;
+      }
+      // Unknown non-group key: fall through to a raw-id score diff below.
+    }
+
+    const a = fmtScorePred(oldEntry);
+    const b = fmtScorePred(newEntry);
     if (a !== b) {
-      const idx = parseInt(gmId.split('_')[1], 10);
+      const idx = parseInt(id.split('_')[1], 10);
       const fx = GROUP_FIXTURES[idx];
-      out.push({ item: fx ? `${fx.a} v ${fx.b}` : gmId, from: a, to: b });
+      out.push({ item: fx ? `${fx.a} v ${fx.b}` : id, from: a, to: b });
     }
   });
   return out;

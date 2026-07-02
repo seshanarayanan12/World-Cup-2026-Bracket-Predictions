@@ -449,6 +449,47 @@
   .group-card { color: var(--text); }
   .team-name, .team-row span { color: var(--text) !important; }
   .group-letter { color: var(--gold) !important; }
+  /* ---- Room consensus ("Room picks") + unpicked-fixtures nudge ---- */
+  .fx-nudge {
+    background: rgba(245,166,35,0.12);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+  .fx-nudge:hover { background: rgba(245,166,35,0.2); }
+  .fx-cons-toggle {
+    background: none;
+    border: 1px solid var(--border-bright);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+  .fx-cons-toggle:hover { color: var(--gold); border-color: var(--gold-dim); }
+  .fx-consensus {
+    margin-top: 8px;
+    padding: 8px 10px 2px;
+    border-top: 1px dashed var(--border);
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .fx-cons-row { display: flex; gap: 10px; padding: 2px 0; align-items: baseline; }
+  .fx-cons-row b { min-width: 64px; color: var(--gold); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .fx-cons-row span { color: var(--muted); }
+  .fx-cons-none b { color: var(--muted); opacity: 0.7; }
+  .fx-flash { animation: fxFlash 2.4s ease; }
+  @keyframes fxFlash {
+    0%, 55% { box-shadow: 0 0 0 2px var(--gold); }
+    100%    { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -2649,6 +2690,139 @@ function buildAllFixtures() {
   return list;
 }
 
+// ============================================================
+// ROOM CONSENSUS ("Room picks") + UNPICKED-FIXTURES NUDGE
+// Consensus is revealed only after kickoff (or once a result is in), so
+// picks can never be copied while a match is still open. Reads the
+// already-synced state.room.predictions — no extra network calls.
+// ============================================================
+
+// A group-match prediction counts as "picked" when both scores are present
+// (and the entry isn't a _cleared tombstone).
+function fxPredComplete(p) {
+  return !!(p && !p._cleared && p.scoreA !== undefined && p.scoreB !== undefined);
+}
+
+// A KO prediction additionally needs a decisive outcome: either a decisive
+// scoreline (advancer auto-derived) or an explicit `winner` side for a draw.
+function koFxPredComplete(p) {
+  if (!fxPredComplete(p)) return false;
+  if (p.scoreA !== p.scoreB) return true;
+  return p.winner === 'a' || p.winner === 'b';
+}
+
+// Whether the room's picks for this fixture may be shown. A stored result
+// always reveals; otherwise the lock must be closed (kickoff has passed).
+// An 'upcoming' group lock (2-day gate) must NOT reveal.
+function fxConsensusRevealed(res, lock) {
+  if (res) return true;
+  return !!(lock && lock.locked && lock.reason === 'closed');
+}
+
+// Build the expandable "Room picks" panel for one fixture. predKey is the
+// fixturePreds key ('gm_7' or 'r32_3'); f is the buildAllFixtures entry
+// (used to resolve KO winner side-letters to team names).
+function buildFxConsensus(predKey, f, isKo) {
+  const room = state.room;
+  if (!room || !room.members || !room.members.length) return '';
+  const allPreds = room.predictions || {};
+  const byScore = {};   // '2–1' -> [member names]
+  const noPick = [];
+  const advCount = {};  // advancing team name -> count
+  room.members.forEach(m => {
+    const mine = ((allPreds[m.id] || {}).fixtures) || {};
+    const p = mine[predKey];
+    const name = m.name || 'Player';
+    if (fxPredComplete(p)) {
+      const key = p.scoreA + '\u2013' + p.scoreB;
+      (byScore[key] = byScore[key] || []).push(name);
+    } else {
+      noPick.push(name);
+    }
+    if (isKo && p && !p._cleared) {
+      // Explicit winner pick wins; otherwise derive from a decisive score —
+      // same precedence as scoring (predictions store side-letters a/b).
+      let side = (p.winner === 'a' || p.winner === 'b') ? p.winner : null;
+      if (!side && fxPredComplete(p) && p.scoreA !== p.scoreB) {
+        side = p.scoreA > p.scoreB ? 'a' : 'b';
+      }
+      if (side) {
+        const nm = side === 'a' ? f.teamAName : f.teamBName;
+        advCount[nm] = (advCount[nm] || 0) + 1;
+      }
+    }
+  });
+  const scoreRows = Object.keys(byScore)
+    .sort((a, b) => byScore[b].length - byScore[a].length)
+    .map(k => `<div class="fx-cons-row"><b>${k}</b><span>${byScore[k].map(escapeHtml).join(', ')}</span></div>`)
+    .join('');
+  let advRow = '';
+  if (isKo) {
+    const parts = Object.keys(advCount)
+      .sort((a, b) => advCount[b] - advCount[a])
+      .map(nm => `${escapeHtml(nm)} \u00d7${advCount[nm]}`);
+    if (parts.length) advRow = `<div class="fx-cons-row fx-cons-adv"><b>Advances</b><span>${parts.join(' \u00b7 ')}</span></div>`;
+  }
+  const noRow = noPick.length
+    ? `<div class="fx-cons-row fx-cons-none"><b>No pick</b><span>${noPick.map(escapeHtml).join(', ')}</span></div>`
+    : '';
+  if (!scoreRows && !advRow && !noRow) return '';
+  return `<div class="fx-consensus" id="fxcons-${predKey}" style="display:none;">${scoreRows}${advRow}${noRow}</div>`;
+}
+
+function fxConsensusToggleBtn(predKey) {
+  return `<button class="fx-cons-toggle" onclick="toggleFxConsensus('${predKey}')">\ud83d\udc65 Room picks</button>`;
+}
+
+function toggleFxConsensus(predKey) {
+  const el = document.getElementById('fxcons-' + predKey);
+  if (el) el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+// Open, unpicked fixtures kicking off within the next 24h, soonest first.
+// Returns [{ id, cardId, ist }] where id is the fixturePreds key. A fixture
+// with a stored result is never nudged (nothing left to pick).
+function computeFxNudge(allFx, now) {
+  now = now ?? nowInstant();
+  const WINDOW_MS = 24 * 60 * 60 * 1000;
+  const results = (state.room && state.room.results) || {};
+  const missing = [];
+  allFx.forEach(f => {
+    if (!f.ist || f.dateOnly) return;
+    const kickoff = istToInstant(f.ist);
+    if (kickoff <= now || kickoff - now > WINDOW_MS) return;
+    if (f.kind === 'group') {
+      if (fixtureLockState(f, now).locked) return;
+      if (results['fx_' + f.gmId]) return;
+      if (!fxPredComplete(state.fixturePreds[f.gmId])) {
+        missing.push({ id: f.gmId, cardId: 'fxcard-' + f.gmId, ist: f.ist });
+      }
+    } else if (f.kind === 'knockout' && f.koScorable) {
+      if (koFixtureLockState({ ist: f.ist }, now).locked) return;
+      if (results[f.koId]) return;
+      if (!koFxPredComplete(state.fixturePreds[f.koId])) {
+        missing.push({ id: f.koId, cardId: 'fxcard-' + f.koId, ist: f.ist });
+      }
+    }
+  });
+  missing.sort((a, b) => a.ist < b.ist ? -1 : a.ist > b.ist ? 1 : 0);
+  return missing;
+}
+
+// Nudge tap → make sure the list view is showing, then scroll to the first
+// unpicked card and flash a highlight ring on it.
+function nudgeScrollToFx(cardId) {
+  if (typeof fixtureView !== 'undefined' && fixtureView === 'bracket') setFixtureView('rounds');
+  let el = document.getElementById(cardId);
+  if (!el) { showFixtureTab('all'); el = document.getElementById(cardId); }
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.remove('fx-flash');      // restart animation if re-tapped
+  void el.offsetWidth;
+  el.classList.add('fx-flash');
+  setTimeout(() => el.classList.remove('fx-flash'), 2600);
+}
+
 function renderFixtures() {
   const container = document.getElementById('fixtures-list');
   if (!container) return;
@@ -2660,6 +2834,9 @@ function renderFixtures() {
   if (toggleWrap) toggleWrap.style.display = isFixtureMode ? '' : 'none';
   if (!isFixtureMode && fixtureView === 'bracket') setFixtureView('rounds');
   let fixtures = buildAllFixtures();
+  // Keep the unfiltered list for the unpicked-fixtures nudge — the nudge must
+  // see everything regardless of the active sub-tab filter.
+  const allFixturesUnfiltered = fixtures;
 
   if (fixtureFilter === 'group') fixtures = fixtures.filter(f => f.kind === 'group');
   else if (fixtureFilter === 'knockout') fixtures = fixtures.filter(f => f.kind === 'knockout');
@@ -2688,6 +2865,18 @@ function renderFixtures() {
   let lastDay = '';
   const results = (state.room && state.room.results) || {};
   const now = nowInstant();
+
+  // Unpicked-fixtures nudge (Fixture Mode): open matches kicking off within
+  // the next 24h that still lack a complete pick. Tap jumps to the first one.
+  if (isFixtureMode) {
+    const missing = computeFxNudge(allFixturesUnfiltered, now);
+    if (missing.length) {
+      const n = missing.length;
+      html += `<div class="fx-nudge" onclick="nudgeScrollToFx('${missing[0].cardId}')">
+        \u26a0\ufe0f ${n} pick${n === 1 ? '' : 's'} missing for match${n === 1 ? '' : 'es'} kicking off in the next 24h \u2014 tap to jump
+      </div>`;
+    }
+  }
 
   fixtures.forEach(f => {
     const t = fmtIST(f.ist);
@@ -2735,10 +2924,13 @@ function renderFixtures() {
       }
       // Disable inputs if the result is in OR the match is locked.
       const disabled = (res || lock.locked) ? 'disabled' : '';
+      // Room consensus — revealed only post-kickoff / once a result is in.
+      const consPanel = fxConsensusRevealed(res, lock) ? buildFxConsensus(f.gmId, f, false) : '';
+      const consBtn = consPanel ? fxConsensusToggleBtn(f.gmId) : '';
       // FotMob-style horizontal card:  Team1 (name+flag, right-aligned)
       //   [scoreA] : [scoreB]  Team2 (flag+name, left-aligned).
       html += `
-        <div class="fx-row fx-row-vs ${res ? 'done' : ''} ${lock.locked && !res ? 'locked' : ''}">
+        <div class="fx-row fx-row-vs ${res ? 'done' : ''} ${lock.locked && !res ? 'locked' : ''}" id="fxcard-${f.gmId}">
           ${timeBlock}
           <div class="fx-vs">
             <div class="fx-side fx-side-home">
@@ -2757,7 +2949,8 @@ function renderFixtures() {
               <span class="fx-side-name">${f.teamBName}</span>
             </div>
           </div>
-          ${resultLine ? `<div class="fx-vs-foot">${resultLine}</div>` : ''}
+          ${(resultLine || consBtn) ? `<div class="fx-vs-foot">${resultLine}${consBtn}</div>` : ''}
+          ${consPanel}
         </div>`;
     } else if (isFixtureMode && f.kind === 'knockout' && f.koScorable) {
       // Knockout match in Fixture Mode: scoreline-prediction card PLUS an
@@ -2789,6 +2982,10 @@ function renderFixtures() {
         resultLine = `<div class="fx-ko-hint">Pick the score and who advances · winner +${KO_FIXTURE_WINNER_PTS}, exact score +${KO_FIXTURE_EXACT_PTS}</div>`;
       }
       const disabled = (res || koLock.locked) ? 'disabled' : '';
+      // Room consensus — revealed only post-kickoff / once a result is in.
+      // koScorable guarantees an ist, so 'unscheduled' can't occur here.
+      const consPanel = fxConsensusRevealed(res, koLock) ? buildFxConsensus(f.koId, f, true) : '';
+      const consBtn = consPanel ? fxConsensusToggleBtn(f.koId) : '';
       // Manual Advances picking is only meaningful for a draw or incomplete
       // score. A decisive score auto-derives the advancer, so the buttons are
       // shown (highlighted) but locked — you can't pick the losing side.
@@ -2811,7 +3008,7 @@ function renderFixtures() {
           </div>`;
       }
       html += `
-        <div class="fx-row fx-row-vs fx-row-ko ${res ? 'done' : ''} ${koLock.locked && !res ? 'locked' : ''}">
+        <div class="fx-row fx-row-vs fx-row-ko ${res ? 'done' : ''} ${koLock.locked && !res ? 'locked' : ''}" id="fxcard-${f.koId}">
           ${timeBlock}
           <div class="fx-vs">
             <div class="fx-side fx-side-home">
@@ -2831,7 +3028,8 @@ function renderFixtures() {
             </div>
           </div>
           ${advBlock}
-          <div class="fx-vs-foot"><span class="fx-ko-badge">${f.venue}</span>${resultLine}</div>
+          <div class="fx-vs-foot"><span class="fx-ko-badge">${f.venue}</span>${resultLine}${consBtn}</div>
+          ${consPanel}
         </div>`;
     } else {
       html += `

@@ -2483,9 +2483,37 @@ function subscribeToRoom(code) {
           const editing = document.activeElement &&
             (document.activeElement.classList.contains('fx-score-in') ||
              document.activeElement.classList.contains('fxbr-score-in'));
-          if (state.user && !editing) {
+          if (state.user) {
             const mine = fresh.predictions && fresh.predictions[state.user.id];
-            if (mine && mine.fixtures) state.fixturePreds = mine.fixtures;
+            if (mine && mine.fixtures) {
+              // MERGE, never wholesale-replace. A realtime event can arrive in
+              // the ~1.2s window between a keystroke and its autosave; blindly
+              // assigning the (stale) cloud copy would drop the just-typed
+              // prediction. So take the cloud fixtures as the base, then
+              // re-overlay any LOCAL prediction that hasn't landed in the cloud
+              // yet (still pending/in-flight autosave, or focused mid-edit).
+              const cloudFix = mine.fixtures || {};
+              const localFix = state.fixturePreds || {};
+              // A save is genuinely outstanding when a debounce timer is armed,
+              // a save is in flight, or another was queued while one ran. In
+              // that window the local map holds edits the cloud hasn't seen yet.
+              const savePending = !!_fixtureSaveTimer || _fixtureSaveInFlight || _fixtureSavePending;
+              if (savePending || editing) {
+                // Preserve unsaved local edits: cloud as base, local overlaid
+                // for any key that differs (the pending keystroke(s)).
+                const mergedFix = Object.assign({}, cloudFix);
+                Object.keys(localFix).forEach(k => {
+                  if (JSON.stringify(localFix[k]) !== JSON.stringify(cloudFix[k])) {
+                    mergedFix[k] = localFix[k];
+                  }
+                });
+                state.fixturePreds = mergedFix;
+              } else {
+                // Nothing pending — cloud is authoritative (external change,
+                // another device, auto-sync result).
+                state.fixturePreds = cloudFix;
+              }
+            }
           }
           showRoomInfo();
           renderLeaderboard();

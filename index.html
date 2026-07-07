@@ -191,17 +191,23 @@
   .fx-view-btn { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
   .fx-view-btn:hover { color: var(--text); }
   .fx-view-btn.active { background: var(--gold-dim); color: var(--gold); }
-  /* Desktop: 9-column converging tree, left flows →, right mirrors ←. */
-  .fxbr-wrap { overflow-x: auto; padding: 4px 0 18px; }
-  .fxbr-head-row { display: flex; gap: 40px; min-width: 2098px; margin-bottom: 10px; }
-  .fxbr-head-row .fxbr-col-head { flex: 1 1 0; min-width: 196px; }
-  .fxbr-head-row .fxbr-final-col-head { flex: 0 0 210px; min-width: 0; }
-  .fxbr-tree { display: flex; align-items: stretch; gap: 40px; min-width: 2098px; }
-  .fxbr-col { display: flex; flex-direction: column; justify-content: space-around; flex: 1 1 0; min-width: 196px; gap: 8px; }
-  .fxbr-col.fxbr-final-col { flex: 0 0 210px; justify-content: center; }
-  .fxbr-col-head { text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding-bottom: 0; }
-  /* In-column heads are replaced by the aligned header row on desktop. */
-  .fxbr-col > .fxbr-col-head { display: none; }
+  /* ===== Round-tabs stage view: each tab = one round feeding the next ===== */
+  .fxrt-tabs { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; background: var(--bg); padding: 6px 0 12px; }
+  .fxrt-tab { flex: 1 1 0; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: 0.5px; padding: 10px 6px; border-radius: 10px; cursor: pointer; transition: color .15s, background .15s, border-color .15s; }
+  .fxrt-tab:hover { color: var(--text); border-color: var(--border-bright); }
+  .fxrt-tab.active { color: var(--gold); background: var(--gold-dim); border-color: rgba(245,166,35,0.45); }
+  .fxrt-tab.fxrt-pulse { animation: fxrtPillPulse 0.9s ease-out; }
+  @keyframes fxrtPillPulse { 0% { box-shadow: 0 0 0 0 rgba(245,166,35,0); } 30% { box-shadow: 0 0 0 3px rgba(245,166,35,0.55), 0 0 14px rgba(245,166,35,0.5); } 100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); } }
+  .fxrt-viewport { overflow: hidden; touch-action: pan-y; transition: height .3s cubic-bezier(.4,0,.2,1); }
+  .fxrt-viewport.fxrt-no-anim { transition: none; }
+  .fxrt-track { display: flex; align-items: flex-start; transition: transform .3s cubic-bezier(.4,0,.2,1); will-change: transform; }
+  .fxrt-track.fxrt-no-anim { transition: none; }
+  .fxrt-panel { flex: 0 0 100%; min-width: 100%; align-self: flex-start; padding: 8px 2px 4px; }
+  .fxrt-stage { position: relative; display: grid; grid-template-columns: 1fr 90px 1fr; align-items: stretch; }
+  .fxrt-stage.fxrt-stage-single { grid-template-columns: minmax(0, 460px); justify-content: center; padding-top: 24px; }
+  .fxrt-col { display: flex; flex-direction: column; justify-content: space-around; gap: 16px; min-width: 0; z-index: 1; }
+  .fxrt-cap { position: absolute; top: -2px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .fxrt-cap.l { left: 4px; } .fxrt-cap.r { right: 4px; color: var(--gold); opacity: 0.85; }
   .fxbr-cell { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; }
   .fxbr-cell.fxbr-locked { opacity: 0.55; }
   .fxbr-cell.fxbr-final { border-color: rgba(245,166,35,0.5); box-shadow: 0 0 0 1px rgba(245,166,35,0.15); }
@@ -227,10 +233,24 @@
   .fxbr-score-in:disabled { opacity: 0.6; }
   .fxbr-foot { font-size: 8px; text-align: center; color: var(--muted); margin-top: 1px; }
   .fxbr-foot.fxbr-pts { color: var(--gold); font-weight: 700; }
-  /* Connector arrow overlay between rounds. */
-  .fxbr-tree-stage { position: relative; min-width: 2098px; }
+  /* Score stepper (▲ value ▼) — numbers only, no keyboard entry. */
+  .fxrt-stepper { display: inline-flex; flex-direction: column; align-items: center; width: 38px; background: var(--bg); border: 1px solid var(--border-bright); border-radius: 7px; overflow: hidden; user-select: none; }
+  .fxrt-step { border: none; background: none; color: var(--muted); font-size: 9px; line-height: 1; padding: 4px 0; width: 100%; cursor: pointer; transition: color .12s, background .12s; }
+  .fxrt-step:hover { color: var(--gold); background: rgba(245,166,35,0.1); }
+  .fxrt-step:active { background: rgba(245,166,35,0.2); }
+  .fxrt-step-val { font-size: 15px; font-weight: 700; color: var(--text); padding: 1px 0; min-height: 19px; line-height: 19px; }
+  .fxrt-step-val.empty { color: var(--muted); }
+  .fxrt-stepper-static { border-style: dashed; opacity: 0.85; }
+  .fxbr-cell.fxbr-final .fxrt-stepper { width: 46px; } .fxbr-cell.fxbr-final .fxrt-step-val { font-size: 19px; }
+  /* Next-round preview card (read-only; tap to open that round). */
+  .fxbr-preview { cursor: pointer; opacity: 0.92; transition: border-color .2s, transform .12s, box-shadow .2s; }
+  .fxbr-preview:hover { border-color: rgba(245,166,35,0.5); transform: translateX(3px); }
+  .fxbr-preview:hover .fxbr-peek { color: var(--gold); }
+  .fxbr-preview.fxbr-arrived { border-color: rgba(245,166,35,0.45); box-shadow: 0 0 0 1px rgba(245,166,35,0.14), 0 0 12px rgba(245,166,35,0.1); }
+  .fxbr-predict-preview { font-size: 10px; color: var(--muted); font-weight: 600; }
+  .fxbr-peek { font-size: 9px; letter-spacing: 0.3px; color: var(--muted); transition: color .15s; }
+  /* Connector arrow overlay between the current round and the next (per stage). */
   .fxbr-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
-  .fxbr-tree-stage .fxbr-tree { position: relative; z-index: 1; min-width: 0; }
   .fxbr-arrow-path { fill: none; stroke: var(--border-bright); stroke-width: 1.4; opacity: 0.32; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.25s, opacity 0.25s, stroke-width 0.25s; }
   .fxbr-arrow-head { fill: var(--border-bright); opacity: 0.32; transition: fill 0.25s, opacity 0.25s; }
   .fxbr-arrow-live .fxbr-arrow-path {
@@ -254,55 +274,27 @@
   @media (prefers-reduced-motion: reduce) {
     .fxbr-arrow-live .fxbr-arrow-path, .fxbr-arrow-live .fxbr-arrow-head { animation: none; }
   }
-  /* Incremental card growth toward the Final (desktop only). */
-  .fxbr-sz-qf { padding: 9px 12px; gap: 6px; }
-  .fxbr-sz-qf .fxbr-flag-btn .flag { width: 25px; height: 18px; }
-  .fxbr-sz-qf .fxbr-code { font-size: 11px; }
-  .fxbr-sz-qf .fxbr-score-in { width: 33px; height: 33px; font-size: 15px; }
-  .fxbr-sz-qf .fxbr-cell-label { font-size: 9px; }
-  .fxbr-sz-qf .fxbr-cell-time { font-size: 10px; }
-  .fxbr-sz-sf { padding: 11px 14px; gap: 7px; }
-  .fxbr-sz-sf .fxbr-flag-btn .flag { width: 28px; height: 20px; }
-  .fxbr-sz-sf .fxbr-code { font-size: 12px; }
-  .fxbr-sz-sf .fxbr-score-in { width: 36px; height: 36px; font-size: 16px; }
-  .fxbr-sz-sf .fxbr-cell-label { font-size: 9px; }
-  .fxbr-sz-sf .fxbr-cell-time { font-size: 11px; }
-  .fxbr-sz-sf .fxbr-foot { font-size: 9px; }
-  .fxbr-sz-final { padding: 14px 16px; gap: 9px; }
-  .fxbr-sz-final .fxbr-flag-btn .flag { width: 32px; height: 23px; }
-  .fxbr-sz-final .fxbr-code { font-size: 14px; }
-  .fxbr-sz-final .fxbr-score-in { width: 42px; height: 42px; font-size: 19px; }
-  .fxbr-sz-final .fxbr-cell-label { font-size: 10px; }
-  .fxbr-sz-final .fxbr-cell-time { font-size: 12px; }
-  .fxbr-sz-final .fxbr-foot { font-size: 10px; }
-  /* Mobile: vertical accordion by round (R32→Final). */
-  @media (max-width: 700px) {
-    .fxbr-wrap { overflow-x: visible; }
-    .fxbr-tree { flex-direction: column; min-width: 0; gap: 0; }
-    .fxbr-col { flex: none; min-width: 0; }
-    .fxbr-acc-head { width: 100%; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 700; padding: 11px 14px; margin-top: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .fxbr-acc-head .fxbr-acc-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
-    .fxbr-acc-head.open .fxbr-acc-caret { transform: rotate(90deg); }
-    .fxbr-acc-body { display: none; flex-direction: column; gap: 8px; padding: 8px 0 4px; }
-    .fxbr-acc-body.open { display: flex; }
-    .fxbr-col-head { display: none; }
-    .fxbr-head-row { display: none; }
-    /* Mobile accordion cards stay uniform; ignore desktop incremental sizing. */
-    .fxbr-sz-qf, .fxbr-sz-sf, .fxbr-sz-final { padding: 9px 12px; gap: 5px; }
-    .fxbr-sz-qf .fxbr-flag-btn .flag, .fxbr-sz-sf .fxbr-flag-btn .flag, .fxbr-sz-final .fxbr-flag-btn .flag { width: 26px; height: 19px; }
-    .fxbr-sz-qf .fxbr-code, .fxbr-sz-sf .fxbr-code, .fxbr-sz-final .fxbr-code { font-size: 12px; }
-    .fxbr-sz-qf .fxbr-score-in, .fxbr-sz-sf .fxbr-score-in, .fxbr-sz-final .fxbr-score-in { width: 34px; height: 34px; font-size: 15px; }
-    .fxbr-sz-qf .fxbr-cell-label, .fxbr-sz-sf .fxbr-cell-label, .fxbr-sz-final .fxbr-cell-label { font-size: 10px; }
-    .fxbr-sz-qf .fxbr-foot, .fxbr-sz-sf .fxbr-foot, .fxbr-sz-final .fxbr-foot { font-size: 10px; }
-    .fxbr-cell { padding: 9px 12px; }
+  /* Desktop: enlarge cards on the deeper rounds (fewer cards, more room). */
+  .fxrt-stage .fxbr-cell.fxbr-final, .fxrt-stage-single .fxbr-cell.fxbr-final { padding: 16px 18px; }
+  .fxbr-cell.fxbr-final .fxbr-flag-btn .flag { width: 30px; height: 22px; }
+  .fxbr-cell.fxbr-final .fxbr-code { font-size: 14px; }
+  /* Mobile: single-column current round; hide the preview column + arrows. */
+  @media (max-width: 680px) {
+    .fxrt-tabs { gap: 4px; }
+    .fxrt-tab { font-size: 12px; padding: 9px 4px; letter-spacing: 0; }
+    .fxrt-stage { grid-template-columns: 1fr; }
+    .fxrt-stage .fxrt-col-next, .fxrt-stage .fxrt-cap, .fxrt-stage .fxbr-arrows { display: none; }
+    .fxrt-col-cur { gap: 10px; }
+    .fxbr-cell { padding: 10px 13px; }
     .fxbr-flag-btn .flag { width: 26px; height: 19px; }
     .fxbr-code { font-size: 12px; }
-    .fxbr-score-in { width: 34px; height: 34px; font-size: 15px; }
     .fxbr-cell-label { font-size: 10px; }
     .fxbr-foot { font-size: 10px; }
   }
-  /* Desktop: hide mobile accordion headers. */
-  @media (min-width: 701px) { .fxbr-acc-head { display: none; } .fxbr-acc-body { display: contents; } }
+  @media (prefers-reduced-motion: reduce) {
+    .fxrt-track, .fxrt-viewport { transition: none; }
+    .fxrt-tab.fxrt-pulse { animation: none; }
+  }
   .match-flag { font-size: 14px; }
   .match-score { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 16px; text-align: center; }
   .connector { width: 10px; border-top: 1px solid var(--border); }
@@ -3115,13 +3107,20 @@ function fxbrCell(fx, isFinal, roundClass = '') {
       : `<div class="fxbr-team fxbr-team-b">${code}${flagBtn}</div>`;
   };
 
+  // Score control: a ▲/▼ stepper (numbers only). The hidden input carries the
+  // value under the id the shared edit core reads (fxbr-<id>-<side>).
+  const scoreCtl = (side, val, isEditable) => {
+    const empty = (val === '' || val == null);
+    const disp = empty ? '–' : val;
+    const up = isEditable ? `<button class="fxrt-step" tabindex="-1" onclick="stepKoScore('${koId}','${side}',1)" aria-label="increase score">▲</button>` : '';
+    const dn = isEditable ? `<button class="fxrt-step" tabindex="-1" onclick="stepKoScore('${koId}','${side}',-1)" aria-label="decrease score">▼</button>` : '';
+    return `<div class="fxrt-stepper${isEditable ? '' : ' fxrt-stepper-static'}">${up}` +
+      `<span class="fxrt-step-val${empty ? ' empty' : ''}">${disp}</span>${dn}` +
+      `<input type="hidden" id="fxbr-${koId}-${side}" value="${empty ? '' : val}"></div>`;
+  };
   const scoreInputs = res
-    ? `<input type="number" class="fxbr-score-in" value="${res.scoreA}" disabled>
-       <span class="fxbr-colon">:</span>
-       <input type="number" class="fxbr-score-in" value="${res.scoreB}" disabled>`
-    : `<input type="number" min="0" max="20" class="fxbr-score-in" id="fxbr-${koId}-a" value="${pa}" placeholder="–" ${editable ? '' : 'disabled'} oninput="onKoBracketInput('${koId}')">
-       <span class="fxbr-colon">:</span>
-       <input type="number" min="0" max="20" class="fxbr-score-in" id="fxbr-${koId}-b" value="${pb}" placeholder="–" ${editable ? '' : 'disabled'} oninput="onKoBracketInput('${koId}')">`;
+    ? `${scoreCtl('a', res.scoreA, false)}<span class="fxbr-colon">:</span>${scoreCtl('b', res.scoreB, false)}`
+    : `${scoreCtl('a', pa, editable)}<span class="fxbr-colon">:</span>${scoreCtl('b', pb, editable)}`;
 
   // Footer: result tag + points, or lock note, or hint.
   let foot = '';
@@ -3157,130 +3156,115 @@ function fxbrCell(fx, isFinal, roundClass = '') {
   </div>`;
 }
 
-// Build a single round column (desktop) / accordion section (mobile).
-function fxbrColumn(headLabel, fixtures, isFinal, roundClass = '') {
-  const cells = fixtures.map(fx => fxbrCell(fx, isFinal, roundClass)).join('');
-  return `<div class="fxbr-col${isFinal ? ' fxbr-final-col' : ''}">
-    <div class="fxbr-col-head">${headLabel}</div>
-    <button class="fxbr-acc-head" onclick="toggleBracketAcc(this)">${headLabel}<span class="fxbr-acc-caret">▶</span></button>
-    <div class="fxbr-acc-body">${cells}</div>
+// Read-only preview of a next-round fixture, shown in the right column of a
+// stage. Tapping it slides to that round's tab. No score ids (avoids clashing
+// with the editable copy that lives in the next stage's left column).
+function fxrtPreviewCell(fx, navToIdx) {
+  const a = fxbrSide(fx, 'a');
+  const b = fxbrSide(fx, 'b');
+  const arrived = !!(a.key || b.key); // a team has advanced into this slot
+  const teamRO = (s, sideKey) => {
+    const tbd = s.key ? '' : ' fxbr-tbd';
+    const flag = s.key ? flagHTML(s.key) : `<span class="flag flag-unknown">🏳</span>`;
+    const code = `<span class="fxbr-code${tbd}">${s.code}</span>`;
+    const fb = `<span class="fxbr-flag-btn" title="${s.name}">${flag}</span>`;
+    return sideKey === 'a'
+      ? `<div class="fxbr-team fxbr-team-a">${fb}${code}</div>`
+      : `<div class="fxbr-team fxbr-team-b">${code}${fb}</div>`;
+  };
+  const koTime = fx.ist ? fmtIST(fx.ist) : null;
+  const mid = `<span class="fxbr-predict-preview">${koTime ? koTime.time.replace(' IST', '') : 'vs'}</span>`;
+  return `<div class="fxbr-cell fxbr-preview${arrived ? ' fxbr-arrived' : ''}" data-fxid="${fx.id}" onclick="fxrtStageJump(${navToIdx})">
+    <div class="fxbr-cell-label">${fx.label || fx.id}</div>
+    <div class="fxbr-vs">
+      ${teamRO(a, 'a')}
+      <div class="fxbr-predict">${mid}</div>
+      ${teamRO(b, 'b')}
+    </div>
+    <div class="fxbr-foot"><span class="fxbr-peek">open round →</span></div>
   </div>`;
 }
 
-function toggleBracketAcc(btn) {
-  btn.classList.toggle('open');
-  const body = btn.nextElementSibling;
-  if (body) body.classList.toggle('open');
-}
+let fxrtRound = 0;        // active stage index (0=R32 … 4=Final); survives re-renders
+let _fxrtOrdered = null;  // cached bracket-ordered fixtures per round key
+let _fxrtDragMoved = false;
 
-function renderFixtureBracket() {
-  const el = document.getElementById('fixtures-bracket');
-  if (!el) return;
-
-  // --- Build bracket render order from the W- wiring, not fixture numbers. ---
-  // The official bracket is NOT sequential (e.g. R16-M89 takes winners of
-  // M74 & M77), so we order each column so that every parent's two feeder
-  // cards sit adjacent. We walk the tree from the Final outward; the leaf
-  // (R32) visiting order then defines every column's vertical order.
+// Order each round in bracket sequence so a target's two feeder cards sit
+// adjacent (matches the real FIFA wiring, not fixture numbers).
+function fxrtOrderRounds() {
   const byId = {};
   [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES]
     .forEach(fx => { byId[fx.id] = fx; });
   const childrenOf = (fx) => [fx.a, fx.b]
     .map(s => (typeof s === 'string' && s.startsWith('W-')) ? byId[s.slice(2)] : null);
-
-  // Ordered leaves under a fixture (depth-first, a-branch then b-branch).
   const leavesUnder = (fx) => {
     const kids = childrenOf(fx);
-    if (!kids[0] && !kids[1]) return [fx];          // R32 leaf
+    if (!kids[0] && !kids[1]) return [fx];
     let out = [];
     kids.forEach(k => { if (k) out = out.concat(leavesUnder(k)); });
     return out;
   };
-  // All fixtures of a given round, ordered to match a leaf ordering: a parent's
-  // position is the average index of its leaves, so columns stay aligned.
-  const orderRound = (roundFixtures, leafOrder) => {
-    const leafPos = {}; leafOrder.forEach((id, i) => { leafPos[id] = i; });
-    return roundFixtures.slice().sort((p, q) => {
-      const lp = leavesUnder(p).map(l => leafPos[l.id]);
-      const lq = leavesUnder(q).map(l => leafPos[l.id]);
-      const ap = lp.reduce((a, b) => a + b, 0) / lp.length;
-      const aq = lq.reduce((a, b) => a + b, 0) / lq.length;
-      return ap - aq;
-    });
+  const fk = childrenOf(FINAL_FIXTURES[0]);
+  const r32Order = [...(fk[0] ? leavesUnder(fk[0]) : []), ...(fk[1] ? leavesUnder(fk[1]) : [])];
+  const leafPos = {}; r32Order.forEach((f, i) => { leafPos[f.id] = i; });
+  const order = (round) => round.slice().sort((p, q) => {
+    const avg = f => { const ls = leavesUnder(f).map(l => leafPos[l.id]); return ls.reduce((a, b) => a + b, 0) / ls.length; };
+    return avg(p) - avg(q);
+  });
+  return {
+    r32: r32Order,
+    r16: order(R16_FIXTURES),
+    qf: order(QF_FIXTURES),
+    sf: order(SF_FIXTURES),
+    fin: FINAL_FIXTURES.slice(),
   };
+}
 
-  // Final has two children: child[0] feeds the left half, child[1] the right.
-  const finalKids = childrenOf(FINAL_FIXTURES[0]);
-  const leftSF  = finalKids[0], rightSF = finalKids[1];
-  const leftLeaves  = leftSF  ? leavesUnder(leftSF)  : [];
-  const rightLeaves = rightSF ? leavesUnder(rightSF) : [];
-  const leftLeafIds  = leftLeaves.map(f => f.id);
-  const rightLeafIds = rightLeaves.map(f => f.id);
-  const leftSet = new Set(leftLeafIds);
+// Round-tabs stage view: pills (R32…Final) over a sliding track. Each tab is a
+// two-column stage — the current round (editable) converging via arrows into
+// the next round (read-only preview). The Final tab is a single champion card.
+function renderFixtureBracket() {
+  const el = document.getElementById('fixtures-bracket');
+  if (!el) return;
 
-  const inLeft = (fx) => leavesUnder(fx).every(l => leftSet.has(l.id));
+  _fxrtOrdered = fxrtOrderRounds();
+  const ROUNDS = [
+    { label: 'R32', full: 'Round of 32', key: 'r32' },
+    { label: 'R16', full: 'Round of 16', key: 'r16' },
+    { label: 'QF', full: 'Quarter-Finals', key: 'qf' },
+    { label: 'SF', full: 'Semi-Finals', key: 'sf' },
+    { label: 'Final', full: 'Final', key: 'fin' },
+  ];
+  fxrtRound = Math.max(0, Math.min(ROUNDS.length - 1, fxrtRound));
 
-  const L_r32 = leftLeaves;
-  const R_r32 = rightLeaves;
-  const L_r16 = orderRound(R16_FIXTURES.filter(inLeft), leftLeafIds);
-  const R_r16 = orderRound(R16_FIXTURES.filter(f => !inLeft(f)), rightLeafIds);
-  const L_qf  = orderRound(QF_FIXTURES.filter(inLeft), leftLeafIds);
-  const R_qf  = orderRound(QF_FIXTURES.filter(f => !inLeft(f)), rightLeafIds);
-  const L_sf  = [leftSF].filter(Boolean);
-  const R_sf  = [rightSF].filter(Boolean);
+  const tabs = ROUNDS.map((r, i) =>
+    `<button class="fxrt-tab${i === fxrtRound ? ' active' : ''}" data-i="${i}" onclick="setFixtureRound(${i})">${r.label}</button>`).join('');
 
-  // Desktop tree order: L→ ... FINAL ... ←R. Mobile CSS stacks these vertically;
-  // to keep mobile in round order (R32→Final) we render a separate ordering on
-  // small screens via the accordion heads (each column is one round-half, but
-  // mobile shows them sequentially, which already reads R32-L, R16-L … then
-  // R32-R last). To keep mobile strictly round-grouped we merge halves per round.
-  const desktopHTML = `<div class="fxbr-wrap">
-    <div class="fxbr-head-row">
-      <div class="fxbr-col-head">R32</div>
-      <div class="fxbr-col-head">R16</div>
-      <div class="fxbr-col-head">QF</div>
-      <div class="fxbr-col-head">SF</div>
-      <div class="fxbr-col-head fxbr-final-col-head">Final</div>
-      <div class="fxbr-col-head">SF</div>
-      <div class="fxbr-col-head">QF</div>
-      <div class="fxbr-col-head">R16</div>
-      <div class="fxbr-col-head">R32</div>
-    </div>
-    <div class="fxbr-tree-stage">
-    <svg class="fxbr-arrows" aria-hidden="true"></svg>
-    <div class="fxbr-tree">
-    ${fxbrColumn('R32', L_r32)}
-    ${fxbrColumn('R16', L_r16)}
-    ${fxbrColumn('QF', L_qf, false, 'fxbr-sz-qf')}
-    ${fxbrColumn('SF', L_sf, false, 'fxbr-sz-sf')}
-    ${fxbrColumn('Final', FINAL_FIXTURES, true, 'fxbr-sz-final')}
-    ${fxbrColumn('SF', R_sf, false, 'fxbr-sz-sf')}
-    ${fxbrColumn('QF', R_qf, false, 'fxbr-sz-qf')}
-    ${fxbrColumn('R16', R_r16)}
-    ${fxbrColumn('R32', R_r32)}
-  </div></div></div>`;
+  const panels = ROUNDS.map((r, i) => {
+    if (i === ROUNDS.length - 1) {
+      return `<div class="fxrt-panel" data-idx="${i}"><div class="fxrt-stage fxrt-stage-single">
+        ${fxbrCell(_fxrtOrdered.fin[0], true, 'fxbr-final')}
+      </div></div>`;
+    }
+    const cur = _fxrtOrdered[r.key].map(fx => fxbrCell(fx, false)).join('');
+    const nxt = _fxrtOrdered[ROUNDS[i + 1].key].map(fx => fxrtPreviewCell(fx, i + 1)).join('');
+    return `<div class="fxrt-panel" data-idx="${i}"><div class="fxrt-stage">
+      <div class="fxrt-cap l">${r.full}</div>
+      <div class="fxrt-cap r">${ROUNDS[i + 1].full} →</div>
+      <svg class="fxbr-arrows" aria-hidden="true"></svg>
+      <div class="fxrt-col fxrt-col-cur">${cur}</div>
+      <div></div>
+      <div class="fxrt-col fxrt-col-next">${nxt}</div>
+    </div></div>`;
+  }).join('');
 
-  // Mobile accordion: one section per round with BOTH halves, R32→Final.
-  const mobileHTML = `<div class="fxbr-wrap fxbr-mobile">
-    ${fxbrColumn('Round of 32', [...L_r32, ...R_r32])}
-    ${fxbrColumn('Round of 16', [...L_r16, ...R_r16])}
-    ${fxbrColumn('Quarter-Finals', [...L_qf, ...R_qf])}
-    ${fxbrColumn('Semi-Finals', [...L_sf, ...R_sf])}
-    ${fxbrColumn('Final', FINAL_FIXTURES, true)}
-  </div>`;
+  el.innerHTML = `<div class="fxrt-tabs">${tabs}</div>
+    <div class="fxrt-viewport" id="fxrt-viewport"><div class="fxrt-track" id="fxrt-track">${panels}</div></div>`;
 
-  const isMobile = window.matchMedia('(max-width: 700px)').matches;
-  el.innerHTML = isMobile ? mobileHTML : desktopHTML;
-  el._fxbrWasMobile = isMobile;
-  // Open the first mobile accordion section by default.
-  if (isMobile) {
-    const firstHead = el.querySelector('.fxbr-acc-head');
-    const firstBody = el.querySelector('.fxbr-acc-body');
-    if (firstHead && firstBody) { firstHead.classList.add('open'); firstBody.classList.add('open'); }
-  } else {
-    // Draw connector arrows after layout settles (needs real cell rects).
-    requestAnimationFrame(() => requestAnimationFrame(drawFxbrArrows));
-  }
+  initFxrtSwipe();
+  positionFxrt(false);
+  // Draw connectors + re-fit height after layout settles (real cell rects).
+  requestAnimationFrame(() => requestAnimationFrame(() => { drawAllStageConnectors(); positionFxrt(false); }));
 }
 
 // Source-fixture wiring per target fixture, derived from W- side references.
@@ -3294,119 +3278,197 @@ function fxbrWiring() {
   return map;
 }
 
-// Draw SVG connectors from each source cell to its next-round target cell.
-// A connector glows gold once its SOURCE cell has produced an advancer.
-function drawFxbrArrows() {
-  const el = document.getElementById('fixtures-bracket');
-  if (!el) return;
-  const stage = el.querySelector('.fxbr-tree-stage');
-  const svg = el.querySelector('.fxbr-arrows');
-  if (!stage || !svg) return;
+// Draw all stages' connectors (desktop only — the preview column is hidden on
+// mobile so there's nothing to connect).
+function drawAllStageConnectors() {
+  if (window.matchMedia('(max-width: 680px)').matches) return;
+  document.querySelectorAll('#fxrt-track .fxrt-stage:not(.fxrt-stage-single)').forEach(drawStageConnectors);
+}
 
+// Draw the elbow connectors for one stage: each next-round (preview) cell is fed
+// by its two current-round cells. A connector glows gold once a feeder has an
+// advancer (data-adv="1").
+function drawStageConnectors(stage) {
+  const svg = stage.querySelector('.fxbr-arrows');
+  if (!svg) return;
   const sb = stage.getBoundingClientRect();
-  svg.setAttribute('viewBox', `0 0 ${stage.scrollWidth} ${stage.scrollHeight}`);
-  svg.setAttribute('width', stage.scrollWidth);
-  svg.setAttribute('height', stage.scrollHeight);
+  svg.setAttribute('viewBox', `0 0 ${stage.offsetWidth} ${stage.offsetHeight}`);
+  svg.setAttribute('width', stage.offsetWidth);
+  svg.setAttribute('height', stage.offsetHeight);
 
-  const cellRect = (fxid) => {
-    const c = stage.querySelector(`.fxbr-cell[data-fxid="${fxid}"]`);
+  const rectOf = (fxid) => {
+    const c = stage.querySelector(`.fxrt-col-cur .fxbr-cell[data-fxid="${fxid}"]`);
     if (!c) return null;
     const r = c.getBoundingClientRect();
-    return { el: c, left: r.left - sb.left, right: r.right - sb.left,
-             top: r.top - sb.top, bottom: r.bottom - sb.top,
-             midY: r.top - sb.top + r.height / 2 };
+    return { el: c, right: r.right - sb.left, midY: r.top - sb.top + r.height / 2 };
   };
-
   const wiring = fxbrWiring();
   let out = '';
-
-  // Draw one elbow connector for a set of same-side sources into the target.
-  // laneFrac (0..1) positions the vertical riser within the gutter so sibling
-  // connectors in the same gap don't stack into one line.
-  const drawElbow = (srcs, tgt, flowRight, laneFrac) => {
-    const dir = flowRight ? 1 : -1;
-    const tgtEdge = flowRight ? tgt.left : tgt.right;     // where the arrow lands
-    const srcEdge = (s) => flowRight ? s.right : s.left;  // where each source exits
-
-    const gutterStart = flowRight ? Math.max(...srcs.map(srcEdge)) : Math.min(...srcs.map(srcEdge));
-    const gutter = Math.abs(tgtEdge - gutterStart);
-    // Riser lane: spread across the usable gutter (12px clear of each card),
-    // positioned by laneFrac so each target's riser occupies a distinct x.
-    let stubOffset;
-    if (gutter > 28) {
-      const usable = gutter - 24;                 // 12px clearance each side
-      stubOffset = 12 + usable * laneFrac;
-    } else {
-      stubOffset = Math.max(0, gutter - 12);
-    }
-    const stubX = gutterStart + dir * stubOffset;
-
-    // 1) Horizontal stub from each source edge to the riser (per-source glow).
-    srcs.forEach(s => {
-      const y = s.midY;
-      const live = s.el.getAttribute('data-adv') === '1' ? ' fxbr-arrow-live' : '';
-      out += `<g class="fxbr-arrow${live}">`
-           + `<path class="fxbr-arrow-path" d="M ${srcEdge(s)} ${y} L ${stubX} ${y}"></path>`
-           + `</g>`;
-    });
-
+  stage.querySelectorAll('.fxrt-col-next .fxbr-cell').forEach(tgtEl => {
+    const tr = tgtEl.getBoundingClientRect();
+    const tgtLeft = tr.left - sb.left, tgtMidY = tr.top - sb.top + tr.height / 2;
+    const srcs = (wiring[tgtEl.getAttribute('data-fxid')] || []).map(rectOf).filter(Boolean);
+    if (!srcs.length) return;
+    const gutterStart = Math.max(...srcs.map(s => s.right));
+    const stubX = gutterStart + (tgtLeft - gutterStart) / 2;
     const anyLive = srcs.some(s => s.el.getAttribute('data-adv') === '1');
     const riserLive = anyLive ? ' fxbr-arrow-live' : '';
-
-    // 2) Vertical riser spans ONLY this pair's sources (plus the target entry
-    // point clamped within that span) so neighbouring connectors stay distinct.
-    const srcYs = srcs.map(s => s.midY);
-    const sTop = Math.min(...srcYs), sBot = Math.max(...srcYs);
-    const yIn = Math.max(sTop, Math.min(sBot, tgt.midY)); // entry clamped to span
+    // 1) horizontal stub from each feeder to the riser (per-feeder glow)
+    srcs.forEach(s => {
+      const live = s.el.getAttribute('data-adv') === '1' ? ' fxbr-arrow-live' : '';
+      out += `<g class="fxbr-arrow${live}"><path class="fxbr-arrow-path" d="M ${s.right} ${s.midY} L ${stubX} ${s.midY}"></path></g>`;
+    });
+    // 2) vertical riser spanning the feeder pair
+    const ys = srcs.map(s => s.midY), sTop = Math.min(...ys), sBot = Math.max(...ys);
+    const yIn = Math.max(sTop, Math.min(sBot, tgtMidY));
+    out += `<g class="fxbr-arrow${riserLive}"><path class="fxbr-arrow-path" d="M ${stubX} ${sTop} L ${stubX} ${sBot}"></path></g>`;
+    // 3) entry into the target with arrowhead
+    const head = `M ${tgtLeft} ${tgtMidY} L ${tgtLeft - 9} ${tgtMidY - 5} L ${tgtLeft - 9} ${tgtMidY + 5} Z`;
     out += `<g class="fxbr-arrow${riserLive}">`
-         + `<path class="fxbr-arrow-path" d="M ${stubX} ${sTop} L ${stubX} ${sBot}"></path>`
-         + `</g>`;
-
-    // 3) Single horizontal entry from riser into the target, with arrowhead.
-    const headX = tgtEdge;
-    const head = `M ${headX} ${tgt.midY} L ${headX - dir * 9} ${tgt.midY - 5} L ${headX - dir * 9} ${tgt.midY + 5} Z`;
-    // Connect riser (at clamped yIn) to the target midY, then into the card.
-    out += `<g class="fxbr-arrow${riserLive}">`
-         + `<path class="fxbr-arrow-path" d="M ${stubX} ${yIn} L ${stubX} ${tgt.midY} L ${headX - dir * 9} ${tgt.midY}"></path>`
-         + `<path class="fxbr-arrow-head" d="${head}"></path>`
-         + `</g>`;
-  };
-
-  // Assign each elbow a lane within its gutter. Group connectors by the gutter
-  // they occupy (source column edge → target column edge, per side) and order
-  // them top-to-bottom so risers fan out instead of overlapping.
-  const jobs = [];
-  Object.keys(wiring).forEach(targetId => {
-    const tgt = cellRect(targetId);
-    if (!tgt) return;
-    const srcs = wiring[targetId].map(cellRect).filter(Boolean);
-    if (!srcs.length) return;
-    const leftSrcs  = srcs.filter(s => s.right <= tgt.left + 1);
-    const rightSrcs = srcs.filter(s => s.left  >= tgt.right - 1);
-    if (leftSrcs.length)  jobs.push({ srcs: leftSrcs,  tgt, flowRight: true });
-    if (rightSrcs.length) jobs.push({ srcs: rightSrcs, tgt, flowRight: false });
+         + `<path class="fxbr-arrow-path" d="M ${stubX} ${yIn} L ${stubX} ${tgtMidY} L ${tgtLeft - 9} ${tgtMidY}"></path>`
+         + `<path class="fxbr-arrow-head" d="${head}"></path></g>`;
   });
-
-  // With feeders rendered adjacent (order derived from wiring), every connector
-  // in a gutter spans only its own tight pair and never overlaps a neighbour,
-  // so each riser simply sits at the centre of the gutter.
-  jobs.forEach(j => drawElbow(j.srcs, j.tgt, j.flowRight, 0.5));
   svg.innerHTML = out;
 }
 
-// Re-render the bracket if the viewport crosses the mobile breakpoint while the
-// Bracket view is open (desktop tree ↔ mobile accordion swap). Debounced.
-let _fxbrResizeTimer = null;
+// Slide the track to the active round and fit the viewport to that panel's
+// height. animate=false snaps instantly (used on (re-)render).
+function positionFxrt(animate) {
+  const track = document.getElementById('fxrt-track');
+  const vp = document.getElementById('fxrt-viewport');
+  if (!track || !vp) return;
+  if (!animate) { track.classList.add('fxrt-no-anim'); vp.classList.add('fxrt-no-anim'); }
+  track.style.transform = `translateX(${-fxrtRound * 100}%)`;
+  const active = track.children[fxrtRound];
+  if (active) vp.style.height = active.offsetHeight + 'px';
+  if (!animate) requestAnimationFrame(() => { track.classList.remove('fxrt-no-anim'); vp.classList.remove('fxrt-no-anim'); });
+  document.querySelectorAll('.fxrt-tab').forEach((t, i) => t.classList.toggle('active', i === fxrtRound));
+}
+
+function setFixtureRound(i) {
+  const track = document.getElementById('fxrt-track');
+  const max = track ? track.children.length - 1 : 4;
+  fxrtRound = Math.max(0, Math.min(max, i));
+  positionFxrt(true);
+}
+
+// Tap on a next-round preview card → open that round (unless it was a drag).
+function fxrtStageJump(i) { if (_fxrtDragMoved) return; setFixtureRound(i); }
+
+// One ▲/▼ tick on a score stepper; writes the hidden input then reuses the
+// shared score-edit path.
+function stepKoScore(koId, side, dir) {
+  const hid = document.getElementById('fxbr-' + koId + '-' + side);
+  if (!hid) return;
+  let v = hid.value === '' ? -1 : parseInt(hid.value, 10);
+  if (isNaN(v)) v = -1;
+  v += dir;
+  hid.value = v < 0 ? '' : String(Math.min(20, v));
+  const disp = hid.parentElement.querySelector('.fxrt-step-val');
+  if (disp) {
+    disp.textContent = hid.value === '' ? '–' : hid.value;
+    disp.classList.toggle('empty', hid.value === '');
+  }
+  onKoBracketInput(koId);
+}
+
+function fxrtRoundIndexOf(koId) {
+  if (R16_FIXTURES.some(f => f.id === koId)) return 1;
+  if (QF_FIXTURES.some(f => f.id === koId)) return 2;
+  if (SF_FIXTURES.some(f => f.id === koId)) return 3;
+  if (FINAL_FIXTURES.some(f => f.id === koId)) return 4;
+  return 0;
+}
+
+// When a team advances, briefly pulse the next round's pill — the "landed here"
+// cue that keeps the tree's sense of progression.
+function fxrtPulseNext(koId, entry) {
+  if (!entry || !entry.winner) return;
+  const idx = fxrtRoundIndexOf(koId);
+  if (idx >= 4) return;
+  const pill = document.querySelector('.fxrt-tab[data-i="' + (idx + 1) + '"]');
+  if (!pill) return;
+  pill.classList.remove('fxrt-pulse');
+  void pill.offsetWidth;
+  pill.classList.add('fxrt-pulse');
+}
+
+// Follow-finger swipe between stages. Attached once to document; handlers look
+// up the current track/viewport at event time so they survive re-renders.
+let _fxrtSwipeInit = false;
+function initFxrtSwipe() {
+  if (_fxrtSwipeInit) return;
+  _fxrtSwipeInit = true;
+  let startX = 0, startY = 0, dragging = false, decided = false, horiz = false, w = 0;
+  const vp = () => document.getElementById('fxrt-viewport');
+  const track = () => document.getElementById('fxrt-track');
+  const down = (e) => {
+    const v = vp();
+    if (!v || !v.contains(e.target)) return;
+    if (e.target.closest('.fxrt-stepper') || e.target.closest('.fxbr-flag-btn')) return;
+    const p = e.touches ? e.touches[0] : e;
+    startX = p.clientX; startY = p.clientY; dragging = true; decided = false; horiz = false; w = v.clientWidth;
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const t = track();
+    if (!t) return;
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - startX, dy = p.clientY - startY;
+    if (!decided) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      decided = true; horiz = Math.abs(dx) > Math.abs(dy);
+      if (horiz) { t.classList.add('fxrt-no-anim'); const v = vp(); if (v) v.classList.add('fxrt-no-anim'); }
+    }
+    if (!horiz) return;
+    if (e.cancelable) e.preventDefault();
+    let off = -fxrtRound * w + dx;
+    off = Math.max(-(t.children.length - 1) * w - 60, Math.min(60, off));
+    t.style.transform = `translateX(${off}px)`;
+    // Grow the viewport to fit whichever neighbour is being revealed (no clip).
+    const v = vp();
+    if (v) {
+      const cur = t.children[fxrtRound];
+      const nb = t.children[dx < 0 ? fxrtRound + 1 : fxrtRound - 1];
+      const h = Math.max(cur ? cur.offsetHeight : 0, nb ? nb.offsetHeight : 0);
+      if (h) v.style.height = h + 'px';
+    }
+  };
+  const up = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    const t = track();
+    if (!t || !horiz) return;
+    const p = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = p.clientX - startX;
+    _fxrtDragMoved = Math.abs(dx) > 8;
+    if (_fxrtDragMoved) setTimeout(() => { _fxrtDragMoved = false; }, 0);
+    const threshold = Math.min(80, w * 0.18);
+    if (dx <= -threshold) fxrtRound = Math.min(t.children.length - 1, fxrtRound + 1);
+    else if (dx >= threshold) fxrtRound = Math.max(0, fxrtRound - 1);
+    t.classList.remove('fxrt-no-anim');
+    const v = vp(); if (v) v.classList.remove('fxrt-no-anim');
+    positionFxrt(true);
+  };
+  document.addEventListener('mousedown', down);
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+  document.addEventListener('touchstart', down, { passive: true });
+  document.addEventListener('touchmove', move, { passive: false });
+  document.addEventListener('touchend', up);
+}
+
+// Redraw the active stage's connectors + re-fit height on resize. Debounced.
+let _fxrtResizeTimer = null;
 window.addEventListener('resize', () => {
   if (fixtureView !== 'bracket') return;
   const el = document.getElementById('fixtures-bracket');
   if (!el || el.style.display === 'none') return;
-  clearTimeout(_fxbrResizeTimer);
-  _fxbrResizeTimer = setTimeout(() => {
-    const isMobile = window.matchMedia('(max-width: 700px)').matches;
-    if (el._fxbrWasMobile !== isMobile) { renderFixtureBracket(); return; }
-    if (!isMobile) drawFxbrArrows();
-  }, 200);
+  clearTimeout(_fxrtResizeTimer);
+  _fxrtResizeTimer = setTimeout(() => {
+    positionFxrt(false);
+    drawAllStageConnectors();
+  }, 150);
 });
 
 // Live-capture a fixture score input into state (without full save)
@@ -3542,39 +3604,53 @@ function setKoAdvance(koId, side) {
 }
 
 // Bracket-tree score input → shared core + focus-safe patch of THIS cell.
+// Score stepper edit → apply, then patch just the affected cell (no full
+// re-render, so the slide/connectors don't flash on every tick).
 function onKoBracketInput(koId) {
   const aEl = document.getElementById('fxbr-' + koId + '-a');
   const bEl = document.getElementById('fxbr-' + koId + '-b');
   if (!aEl || !bEl) return;
   const r = applyKoScoreEdit(koId, aEl.value, bEl.value);
-  if (!r.ok) { renderFixtureBracket(); return; }
-  patchBracketCell(koId, r.entry, r.decisive);
+  if (!r.ok) { renderFixtureBracket(); return; } // rejected (locked) → revert display
+  fxrtAfterEdit(koId, r.entry, r.decisive);
+  fxrtPulseNext(koId, r.entry);
 }
 
-// Bracket-tree flag tap → advance pick (manual; draws only).
+// Bracket flag tap → advance pick (manual).
 function setKoBracketAdvance(koId, side) {
   const r = applyKoAdvanceEdit(koId, side);
   if (!r.ok) return;
-  patchBracketCell(koId, r.entry, false);
+  fxrtAfterEdit(koId, r.entry, false);
+  fxrtPulseNext(koId, r.entry);
 }
 
-// Focus-safe DOM patch for a single bracket cell's advancer rings.
-function patchBracketCell(koId, entry, decisive) {
-  const aEl = document.getElementById('fxbr-' + koId + '-a');
-  const cell = aEl ? aEl.closest('.fxbr-cell') : null;
+const _fxrtAll = () => [...R32_FIXTURES, ...R16_FIXTURES, ...QF_FIXTURES, ...SF_FIXTURES, ...FINAL_FIXTURES];
+// The fixture whose a/b consumes the winner of koId (its next-round parent).
+function fxrtParentOf(koId) {
+  return _fxrtAll().find(f => f.a === 'W-' + koId || f.b === 'W-' + koId) || null;
+}
+
+// Patch a single cell after an edit: advancer rings on its flags, its data-adv
+// (for connector glow), the one preview cell it feeds (so a newly-advanced team
+// shows up), and this stage's connectors.
+function fxrtAfterEdit(koId, entry, decisive) {
+  const hid = document.getElementById('fxbr-' + koId + '-a');
+  const cell = hid ? hid.closest('.fxbr-cell') : null;
   if (!cell) return;
-  const flags = cell.querySelectorAll('.fxbr-flag-btn');
-  flags.forEach((btn, i) => {
-    // On a decisive score the leader is auto-advancer and flags lock.
-    btn.disabled = decisive || btn.dataset.locked === '1';
+  cell.querySelectorAll('.fxbr-flag-btn').forEach((btn, i) => {
+    if (btn.tagName === 'BUTTON') btn.disabled = decisive || btn.dataset.locked === '1';
     const isAdv = entry.winner && ((i === 0 && entry.winner === 'a') || (i === 1 && entry.winner === 'b'));
     btn.classList.toggle('fxbr-adv', !!isAdv);
   });
-  // Reflect advancer state on the cell and refresh connector glow (desktop).
   cell.setAttribute('data-adv', entry.winner ? '1' : '0');
-  if (!window.matchMedia('(max-width: 700px)').matches) {
-    if (document.querySelector('.fxbr-arrows')) drawFxbrArrows();
+  const stage = cell.closest('.fxrt-stage');
+  if (!stage) return;
+  const parent = fxrtParentOf(koId);
+  if (parent) {
+    const prevEl = stage.querySelector(`.fxrt-col-next .fxbr-cell[data-fxid="${parent.id}"]`);
+    if (prevEl) prevEl.outerHTML = fxrtPreviewCell(parent, fxrtRoundIndexOf(parent.id));
   }
+  if (!window.matchMedia('(max-width: 680px)').matches) drawStageConnectors(stage);
 }
 function clearFixturePrediction(gmId) {
   if (!state.fixturePreds) state.fixturePreds = {};
